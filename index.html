@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Change Simulator</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin-bottom: 60px; /* Adjust margin bottom for footer */
+        }
+
+        #environmentAnimation {
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #333;
+            position: relative;
+        }
+
+        #impactForecast {
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .hot {
+            background-color: #ff8a65;
+            transition: background-color 1s;
+        }
+
+        .cold {
+            background-color: #4fc3f7;
+            transition: background-color 1s;
+        }
+
+        .windy {
+            background-color: #aed581;
+            transition: background-color 1s;
+        }
+
+        #globalMap {
+            height: 400px;
+        }
+
+        .list-group-item {
+            cursor: pointer;
+        }
+
+        footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 10px 0;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #environmentAnimation, #impactForecast {
+                height: auto;
+            }
+            #globalMap {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-success text-white text-center py-4">
+        <h1>Climate Change Simulator</h1>
+    </header>
+    <main class="container my-4">
+        <section id="controls" class="mb-4">
+            <h2>Simulation Controls</h2>
+            <form id="controlForm">
+                <div class="form-group">
+                    <label for="scenario">Select Scenario:</label>
+                    <select id="scenario" class="form-control">
+                        <option value="default">Custom</option>
+                        <option value="businessAsUsual">Business as Usual</option>
+                        <option value="greenFuture">Green Future</option>
+                        <option value="userDefined">User Defined</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="emissionReduction">Emission Reduction (%):</label>
+                    <input type="range" id="emissionReduction" min="0" max="100" value="50" class="custom-range">
+                    <span id="emissionReductionValue">50</span>%
+                </div>
+                <div class="form-group">
+                    <label for="renewableEnergy">Renewable Energy Adoption (%):</label>
+                    <input type="range" id="renewableEnergy" min="0" max="100" value="50" class="custom-range">
+                    <span id="renewableEnergyValue">50</span>%
+                </div>
+                <div class="form-group">
+                    <label for="deforestationRate">Deforestation Rate (%):</label>
+                    <input type="range" id="deforestationRate" min="0" max="100" value="50" class="custom-range">
+                    <span id="deforestationRateValue">50</span>%
+                </div>
+                <div class="form-group">
+                    <label for="carbonCapture">Carbon Capture Technology (% efficiency):</label>
+                    <input type="range" id="carbonCapture" min="0" max="100" value="50" class="custom-range">
+                    <span id="carbonCaptureValue">50</span>%
+                </div>
+                <button id="runSimulation" type="button" class="btn btn-success btn-block">Run Simulation</button>
+                <button id="saveScenario" type="button" class="btn btn-primary btn-block">Save Scenario</button>
+                <button id="compareScenarios" type="button" class="btn btn-warning btn-block">Compare Scenarios</button>
+            </form>
+        </section>
+        <section id="results" class="mb-4">
+            <h2>Simulation Results</h2>
+            <canvas id="climateChart"></canvas>
+            <div id="environmentAnimation" class="mt-4"></div>
+            <div id="impactForecast" class="mt-4 p-3 bg-light"></div>
+            <div id="globalMap" class="mt-4"></div>
+        </section>
+        <section id="educational" class="mb-4">
+            <h2>Learn More</h2>
+            <p>Understand the impact of various environmental policies on climate change.</p>
+            <ul class="list-group">
+                <li class="list-group-item" onclick="showContent('emissionReduction')">What is Emission Reduction?</li>
+                <li class="list-group-item" onclick="showContent('renewableEnergy')">How does Renewable Energy Help?</li>
+                <li class="list-group-item" onclick="showContent('deforestation')">Effects of Deforestation</li>
+                <li class="list-group-item" onclick="showContent('carbonCapture')">Advancements in Carbon Capture Technology</li>
+                <li class="list-group-item" onclick="showContent('economicImpact')">Economic Impact of Policies</li>
+                <li class="list-group-item" onclick="showContent('publicOpinion')">Public Opinion on Climate Policies</li>
+            </ul>
+            <div id="educationalContent" class="mt-4 p-3 bg-light"></div>
+        </section>
+        <section id="feedback" class="mb-4">
+            <h2>Feedback</h2>
+            <p id="feedbackText" class="bg-light p-3"></p>
+        </section>
+    </main>
+    <footer class="bg-light text-center py-3">
+        <p>&copy; 2024 Climate Change Simulator</p>
+    </footer>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script>
+        document.getElementById('runSimulation').addEventListener('click', runSimulation);
+        document.getElementById('saveScenario').addEventListener('click', saveScenario);
+        document.getElementById('compareScenarios').addEventListener('click', compareScenarios);
+
+        document.getElementById('emissionReduction').addEventListener('input', function() {
+            document.getElementById('emissionReductionValue').textContent = this.value;
+        });
+
+        document.getElementById('renewableEnergy').addEventListener('input', function() {
+            document.getElementById('renewableEnergyValue').textContent = this.value;
+        });
+
+        document.getElementById('deforestationRate').addEventListener('input', function() {
+            document.getElementById('deforestationRateValue').textContent = this.value;
+        });
+
+        document.getElementById('carbonCapture').addEventListener('input', function() {
+            document.getElementById('carbonCaptureValue').textContent = this.value;
+        });
+
+        document.getElementById('scenario').addEventListener('change', function() {
+            const scenario = this.value;
+            if (scenario === 'businessAsUsual') {
+                document.getElementById('emissionReduction').value = 20;
+                document.getElementById('renewableEnergy').value = 30;
+                document.getElementById('deforestationRate').value = 70;
+                document.getElementById('carbonCapture').value = 10;
+            } else if (scenario === 'greenFuture') {
+                document.getElementById('emissionReduction').value = 80;
+                document.getElementById('renewableEnergy').value = 80;
+                document.getElementById('deforestationRate').value = 20;
+                document.getElementById('carbonCapture').value = 70;
+            } else if (scenario === 'userDefined') {
+                // Allow user to input custom values, do not change the values automatically
+            }
+            updateValues();
+        });
+
+        function updateValues() {
+            document.getElementById('emissionReductionValue').textContent = document.getElementById('emissionReduction').value;
+            document.getElementById('renewableEnergyValue').textContent = document.getElementById('renewableEnergy').value;
+            document.getElementById('deforestationRateValue').textContent = document.getElementById('deforestationRate').value;
+            document.getElementById('carbonCaptureValue').textContent = document.getElementById('carbonCapture').value;
+        }
+
+        function runSimulation() {
+            const emissionReduction = document.getElementById('emissionReduction').value;
+            const renewableEnergy = document.getElementById('renewableEnergy').value;
+            const deforestationRate = document.getElementById('deforestationRate').value;
+            const carbonCapture = document.getElementById('carbonCapture').value;
+
+            const years = [];
+            const temperatures = [];
+            // Example simulation over 100 years
+            for (let year = 2020; year <= 2100; year++) {
+                years.push(year);
+
+                // Dynamic temperature increase calculation based on factors
+                let tempIncrease = calculateTemperatureIncrease(emissionReduction, renewableEnergy, deforestationRate, carbonCapture);
+
+                // Adding some random variation for realism
+                tempIncrease += Math.random() * 0.5 - 0.25;
+
+                temperatures.push(tempIncrease);
+            }
+
+            updateChart(years, temperatures);
+            updateEnvironmentAnimation(temperatures[temperatures.length - 1]);
+            updateImpactForecast(temperatures[temperatures.length - 1]);
+            updateGlobalMap(temperatures); // Update global map visualization
+            updateFeedback(temperatures[temperatures.length - 1]);
+        }
+
+        function calculateTemperatureIncrease(emissionReduction, renewableEnergy, deforestationRate, carbonCapture) {
+            // Base temperature increase calculation
+            let tempIncrease = (100 - emissionReduction) * 0.02 + (100 - renewableEnergy) * 0.01 +
+                               (deforestationRate * 0.015) - (carbonCapture * 0.01);
+
+            return tempIncrease;
+        }
+
+        function updateChart(labels, data) {
+            const ctx = document.getElementById('climateChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temperature Increase (°C)',
+                        data: data,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toFixed(2) + ' °C increase';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Temperature Increase (°C)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateEnvironmentAnimation(temp) {
+            const animationDiv = document.getElementById('environmentAnimation');
+            animationDiv.className = '';
+            if (temp >= 2) {
+                animationDiv.classList.add('hot');
+                animationDiv.textContent = 'Hot';
+            } else if (temp <= -2) {
+                animationDiv.classList.add('cold');
+                animationDiv.textContent = 'Cold';
+            } else {
+                animationDiv.classList.add('windy');
+                animationDiv.textContent = 'Windy';
+            }
+        }
+
+        function updateImpactForecast(temp) {
+            const forecastDiv = document.getElementById('impactForecast');
+            forecastDiv.textContent = `Based on the current scenario, the projected temperature increase is ${temp.toFixed(2)}°C, which could lead to severe weather events, sea level rise, and habitat loss.`;
+        }
+
+        function updateGlobalMap(temperatures) {
+            const map = L.map('globalMap').setView([20, 0], 2);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            temperatures.forEach((temp, index) => {
+                const lat = (Math.random() * 180) - 90;
+                const lon = (Math.random() * 360) - 180;
+                L.circle([lat, lon], {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: Math.abs(temp) * 100000 // Adjusted radius for better visualization
+                }).addTo(map);
+            });
+        }
+
+        function updateFeedback(temp) {
+            console.log('Temperature received:', temp);
+
+            const feedbackText = document.getElementById('feedbackText');
+            if (temp >= 2) {
+                feedbackText.textContent = 'The projected temperature increase is very high. Consider increasing emission reductions and renewable energy adoption.';
+            } else if (temp <= 0.5) {
+                feedbackText.textContent = 'The projected temperature increase is within safe limits. Keep up the good work!';
+            } else {
+                feedbackText.textContent = 'The projected temperature increase is moderate. Consider additional measures to reduce deforestation and increase carbon capture.';
+            }
+        }
+
+        function compareScenarios() {
+            const savedScenario = JSON.parse(localStorage.getItem('userScenario'));
+            if (!savedScenario) {
+                alert('No saved scenario to compare.');
+                return;
+            }
+
+            const currentScenario = {
+                emissionReduction: document.getElementById('emissionReduction').value,
+                renewableEnergy: document.getElementById('renewableEnergy').value,
+                deforestationRate: document.getElementById('deforestationRate').value,
+                carbonCapture: document.getElementById('carbonCapture').value,
+            };
+
+            const comparisonResult = compareScenarioLogic(currentScenario, savedScenario);
+            displayComparisonResult(comparisonResult);
+        }
+
+        function compareScenarioLogic(current, saved) {
+            const keys = ['emissionReduction', 'renewableEnergy', 'deforestationRate', 'carbonCapture'];
+            let comparisonResult = 'Comparison of current and saved scenarios:\n';
+            keys.forEach(key => {
+                comparisonResult += `${key}: Current - ${current[key]}%, Saved - ${saved[key]}%\n`;
+            });
+            return comparisonResult;
+        }
+
+        function displayComparisonResult(result) {
+            alert(result);
+        }
+
+        function saveScenario() {
+            const scenario = {
+                emissionReduction: document.getElementById('emissionReduction').value,
+                renewableEnergy: document.getElementById('renewableEnergy').value,
+                deforestationRate: document.getElementById('deforestationRate').value,
+                carbonCapture: document.getElementById('carbonCapture').value,
+            };
+            localStorage.setItem('userScenario', JSON.stringify(scenario));
+            alert('Scenario saved!');
+        }
+
+        function loadScenario() {
+            const scenario = JSON.parse(localStorage.getItem('userScenario'));
+            if (scenario) {
+                document.getElementById('emissionReduction').value = scenario.emissionReduction;
+                document.getElementById('renewableEnergy').value = scenario.renewableEnergy;
+                document.getElementById('deforestationRate').value = scenario.deforestationRate;
+                document.getElementById('carbonCapture').value = scenario.carbonCapture;
+                updateValues();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadScenario);
+
+        function showContent(topic) {
+            const content = {
+                emissionReduction: `<h3>What is Emission Reduction?</h3><p>Emission reduction refers to the process of cutting down the amount of greenhouse gases released into the atmosphere. This can be achieved through various means such as increasing energy efficiency, adopting renewable energy sources, and implementing stricter regulations on industries.</p>`,
+                renewableEnergy: `<h3>How does Renewable Energy Help?</h3><p>Renewable energy helps by providing clean, sustainable power that does not emit greenhouse gases. By using sources like solar, wind, and hydroelectric power, we can significantly reduce our carbon footprint and mitigate the effects of climate change.</p>`,
+                deforestation: `<h3>Effects of Deforestation</h3><p>Deforestation contributes to climate change by reducing the number of trees that can absorb CO2. This leads to higher concentrations of greenhouse gases in the atmosphere. Additionally, deforestation can result in loss of biodiversity and disruption of water cycles.</p>`,
+                carbonCapture: `<h3>Advancements in Carbon Capture Technology</h3><p>Carbon capture technology involves capturing CO2 emissions from sources like power plants and storing it underground to prevent it from entering the atmosphere. Advances in this technology are crucial for reducing overall emissions and combating climate change.</p>`,
+                economicImpact: `<h3>Economic Impact of Policies</h3><p>Climate policies can have significant economic impacts. While some policies may incur costs, they often lead to long-term economic benefits by reducing the risks and damages associated with climate change. Investments in green technology can also create jobs and spur economic growth.</p>`,
+                publicOpinion: `<h3>Public Opinion on Climate Policies</h3><p>Public opinion on climate policies varies widely, but there is growing support for actions to address climate change. Awareness and education play key roles in shaping public opinion and driving policy changes. Engaging communities and stakeholders is essential for effective policy implementation.</p>`
+            };
+            
+            document.getElementById('educationalContent').innerHTML = content[topic];
+        }
+    </script>
+</body>
+</html>
