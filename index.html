@@ -1,87 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Climate Change Simulator</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin-bottom: 60px; /* Adjust margin bottom for footer */
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #2b5876, #4e4376);
+            color: #fff;
         }
 
-        #environmentAnimation {
-            height: 200px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            color: #333;
-            position: relative;
+        header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px;
         }
 
+        h1 {
+            font-size: 2.5em;
+        }
+
+        main {
+            margin: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        section {
+            margin-bottom: 30px;
+        }
+
+        #environmentAnimation,
         #impactForecast {
             height: 200px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 18px;
-            color: #333;
+            font-size: 1.5em;
+            background: rgb(13, 0, 0);
+            border-radius: 10px;
+            margin-bottom: 20px;
         }
 
         .hot {
-            background-color: #ff8a65;
+            background-color: rgba(255, 0, 0, 0.5);
             transition: background-color 1s;
         }
 
         .cold {
-            background-color: #4fc3f7;
+            background-color: rgba(0, 0, 255, 0.5);
             transition: background-color 1s;
         }
 
         .windy {
-            background-color: #aed581;
+            background-color: rgba(0, 255, 0, 0.5);
             transition: background-color 1s;
         }
 
         #globalMap {
             height: 400px;
+            border-radius: 10px;
         }
 
         .list-group-item {
             cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transition: background 0.3s;
+        }
+
+        .list-group-item:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         footer {
+            background: rgba(0, 0, 0, 0.7);
+            text-align: center;
+            padding: 10px 0;
             position: fixed;
             bottom: 0;
             width: 100%;
-            background-color: #f8f9fa;
-            text-align: center;
-            padding: 10px 0;
         }
-        
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
-            #environmentAnimation, #impactForecast {
+            #environmentAnimation,
+            #impactForecast {
                 height: auto;
             }
+
             #globalMap {
                 height: 300px;
             }
         }
     </style>
 </head>
+
 <body>
-    <header class="bg-success text-white text-center py-4">
-        <h1>Climate Change Simulator</h1>
+    <header>
+        <h1><i class="fas fa-globe"></i> Climate Change Simulator</h1>
     </header>
-    <main class="container my-4">
-        <section id="controls" class="mb-4">
-            <h2>Simulation Controls</h2>
+    <main class="container">
+        <section id="controls">
+            <h2><i class="fas fa-sliders-h"></i> Simulation Controls</h2>
             <form id="controlForm">
                 <div class="form-group">
                     <label for="scenario">Select Scenario:</label>
@@ -112,20 +143,20 @@
                     <input type="range" id="carbonCapture" min="0" max="100" value="50" class="custom-range">
                     <span id="carbonCaptureValue">50</span>%
                 </div>
-                <button id="runSimulation" type="button" class="btn btn-success btn-block">Run Simulation</button>
-                <button id="saveScenario" type="button" class="btn btn-primary btn-block">Save Scenario</button>
-                <button id="compareScenarios" type="button" class="btn btn-warning btn-block">Compare Scenarios</button>
+                <button id="runSimulation" type="button" class="btn btn-success btn-block"><i class="fas fa-play"></i> Run Simulation</button>
+                <button id="saveScenario" type="button" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Scenario</button>
+                <button id="compareScenarios" type="button" class="btn btn-warning btn-block"><i class="fas fa-exchange-alt"></i> Compare Scenarios</button>
             </form>
         </section>
-        <section id="results" class="mb-4">
-            <h2>Simulation Results</h2>
+        <section id="results">
+            <h2><i class="fas fa-chart-line"></i> Simulation Results</h2>
             <canvas id="climateChart"></canvas>
             <div id="environmentAnimation" class="mt-4"></div>
-            <div id="impactForecast" class="mt-4 p-3 bg-light"></div>
+            <div id="impactForecast" class="mt-4 p-3"></div>
             <div id="globalMap" class="mt-4"></div>
         </section>
-        <section id="educational" class="mb-4">
-            <h2>Learn More</h2>
+        <section id="educational">
+            <h2><i class="fas fa-book"></i> Learn More</h2>
             <p>Understand the impact of various environmental policies on climate change.</p>
             <ul class="list-group">
                 <li class="list-group-item" onclick="showContent('emissionReduction')">What is Emission Reduction?</li>
@@ -135,14 +166,14 @@
                 <li class="list-group-item" onclick="showContent('economicImpact')">Economic Impact of Policies</li>
                 <li class="list-group-item" onclick="showContent('publicOpinion')">Public Opinion on Climate Policies</li>
             </ul>
-            <div id="educationalContent" class="mt-4 p-3 bg-light"></div>
+            <div id="educationalContent" class="mt-4 p-3"></div>
         </section>
-        <section id="feedback" class="mb-4">
-            <h2>Feedback</h2>
-            <p id="feedbackText" class="bg-light p-3"></p>
+        <section id="feedback">
+            <h2><i class="fas fa-comments"></i> Feedback</h2>
+            <p id="feedbackText" class="bg-light p-3 text-dark"></p>
         </section>
     </main>
-    <footer class="bg-light text-center py-3">
+    <footer>
         <p>&copy; 2024 Climate Change Simulator</p>
     </footer>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
@@ -395,4 +426,6 @@
         }
     </script>
 </body>
+
 </html>
+
