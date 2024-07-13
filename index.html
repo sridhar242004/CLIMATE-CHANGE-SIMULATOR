@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,11 +12,11 @@
         body {
             font-family: 'Roboto', sans-serif;
             background: linear-gradient(135deg, #2b5876, #4e4376);
-            color: #fff;
+            color: #060000;
         }
 
         header {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgb(253, 3, 3);
             padding: 20px;
             border-radius: 10px;
             text-align: center;
@@ -47,22 +46,22 @@
             justify-content: center;
             align-items: center;
             font-size: 1.5em;
-            background: rgb(13, 0, 0);
+            background: rgb(249, 247, 247);
             border-radius: 10px;
             margin-bottom: 20px;
         }
 
-        .hot {
+       .hot {
             background-color: rgba(255, 0, 0, 0.5);
             transition: background-color 1s;
         }
 
-        .cold {
+       .cold {
             background-color: rgba(0, 0, 255, 0.5);
             transition: background-color 1s;
         }
 
-        .windy {
+       .windy {
             background-color: rgba(0, 255, 0, 0.5);
             transition: background-color 1s;
         }
@@ -72,14 +71,14 @@
             border-radius: 10px;
         }
 
-        .list-group-item {
+       .list-group-item {
             cursor: pointer;
             background: rgba(255, 255, 255, 0.1);
             color: #fff;
             transition: background 0.3s;
         }
 
-        .list-group-item:hover {
+       .list-group-item:hover {
             background: rgba(255, 255, 255, 0.3);
         }
 
@@ -102,6 +101,53 @@
             #globalMap {
                 height: 300px;
             }
+        }
+        #howToUse {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #howToUse .modal-dialog {
+            max-width: 80%;
+        }
+        
+        #howToUse .modal-content {
+            background-color: #ee0404;
+            color: #333;
+        }
+        
+        #howToUse .close {
+            color: #333;
+        }
+        
+        #howToUse .modal-header {
+            border-bottom: none;
+        }
+        
+        #howToUse .modal-title {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        #howToUse .modal-body {
+            padding: 2rem;
+            text-align: justify;
+        }
+        
+        #howToUse .modal-footer {
+            border-top: none;
+        }
+        
+        #howToUse .btn {
+            margin-right: 1rem;
         }
     </style>
 </head>
@@ -176,8 +222,41 @@
     <footer>
         <p>&copy; 2024 Climate Change Simulator</p>
     </footer>
+
+    <!-- How to use modal -->
+    <div class="modal fade" id="howToUseModal" tabindex="-1" aria-labelledby="howToUseModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="howToUseModalLabel">How to Use</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Welcome to the Climate Change Simulator! This interactive tool allows you to explore the impact of different environmental policies on climate change.</p>
+                    <p>To use the simulator, follow these steps:</p>
+                    <ol>
+                        <li>Select a scenario from the dropdown menu or create your own custom scenario.</li>
+                        <li>Adjust the sliders to set the emission reduction, renewable energy adoption, deforestation rate, and carbon capture technology efficiency.</li>
+                        <li>Click the "Run Simulation" button to see the results.</li>
+                        <li>Explore the simulation results, including the temperature increase chart, environment animation, impact forecast, and global map.</li>
+                        <li>Learn more about the different factors that affect climate change by clicking on the "Learn More" section.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
     <script>
+        $(document).ready(function() {
+            $('#howToUseModal').modal('show');
+        });
+
         document.getElementById('runSimulation').addEventListener('click', runSimulation);
         document.getElementById('saveScenario').addEventListener('click', saveScenario);
         document.getElementById('compareScenarios').addEventListener('click', compareScenarios);
@@ -223,7 +302,7 @@
             document.getElementById('carbonCaptureValue').textContent = document.getElementById('carbonCapture').value;
         }
 
-        function runSimulation() {
+function runSimulation() {
             const emissionReduction = document.getElementById('emissionReduction').value;
             const renewableEnergy = document.getElementById('renewableEnergy').value;
             const deforestationRate = document.getElementById('deforestationRate').value;
@@ -339,7 +418,7 @@
                     color: 'red',
                     fillColor: '#f03',
                     fillOpacity: 0.5,
-                    radius: Math.abs(temp) * 100000 // Adjusted radius for better visualization
+                    radius: Math.abs(temp) * 100000 // Adjusted radiusfor better visualization
                 }).addTo(map);
             });
         }
