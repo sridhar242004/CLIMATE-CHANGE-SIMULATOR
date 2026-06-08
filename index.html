@@ -1,494 +1,1605 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Climate Change Simulator</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #000308, #000000);
-            color: #ffffff;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClimaCore Observatory — Advanced Climate Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════════ */
+:root {
+  --bg0: #000208;
+  --bg1: #000e1f;
+  --bg2: #011428;
+  --card: rgba(1,18,38,0.65);
+  --cyan: #00d4ff;
+  --cyan2: #00a8cc;
+  --orange: #ff6b2b;
+  --red: #ff2d55;
+  --green: #39ff14;
+  --purple: #8b5cf6;
+  --gold: #f5c842;
+  --fg0: #ffffff;
+  --fg1: #b0c4d8;
+  --fg2: #4a6070;
+  --glass: rgba(0,212,255,0.04);
+  --glassb: rgba(0,212,255,0.08);
+  --radius: 14px;
+  --shadow-cyan: 0 0 40px rgba(0,212,255,0.12);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg0);
+  color: var(--fg0);
+  overflow-x: hidden;
+  cursor: default;
+}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg0); }
+::-webkit-scrollbar-thumb { background: var(--cyan2); border-radius: 3px; }
+::selection { background: rgba(0,212,255,0.25); color: #fff; }
 
-        .card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
+/* ═══════════════════════════════════════════════════════════
+   LOADING SCREEN
+═══════════════════════════════════════════════════════════ */
+#loader {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg0);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 24px;
+  transition: opacity 0.7s ease;
+}
+.loader-logo {
+  font-family: 'Orbitron', monospace; font-weight: 900; font-size: 2.2rem;
+  background: linear-gradient(135deg, var(--cyan) 0%, var(--orange) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  letter-spacing: 0.15em;
+}
+.loader-track {
+  width: 240px; height: 2px; background: rgba(255,255,255,0.07); border-radius: 1px; overflow: hidden;
+}
+.loader-bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--cyan), var(--orange));
+  border-radius: 1px; animation: loadProgress 2.4s ease forwards;
+}
+@keyframes loadProgress { 0%{width:0%} 30%{width:40%} 70%{width:75%} 100%{width:100%} }
+.loader-status {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+  color: var(--fg2); letter-spacing: 0.2em; text-transform: uppercase;
+}
 
-        #globalMap {
-            height: 400px;
-            border-radius: 10px;
-        }
+/* ═══════════════════════════════════════════════════════════
+   NAVBAR
+═══════════════════════════════════════════════════════════ */
+.nav-main {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(0,2,8,0.88);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border-bottom: 1px solid rgba(0,212,255,0.08);
+  padding: 10px 0;
+  transition: all 0.3s ease;
+}
+.nav-brand {
+  font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.25rem;
+  background: linear-gradient(90deg, var(--cyan), var(--orange));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  text-decoration: none; letter-spacing: 0.12em;
+}
+.nav-link-custom {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  color: var(--fg2) !important; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 5px 14px !important; text-decoration: none;
+  transition: color 0.25s ease;
+}
+.nav-link-custom:hover { color: var(--cyan) !important; }
+.co2-pill {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  color: var(--orange); padding: 4px 14px;
+  border: 1px solid rgba(255,107,43,0.35); border-radius: 20px;
+  animation: pulseOrange 2.5s ease infinite;
+}
+@keyframes pulseOrange {
+  0%,100%{box-shadow:0 0 0 0 rgba(255,107,43,0.3)}
+  50%{box-shadow:0 0 0 6px rgba(255,107,43,0)}
+}
 
-        .custom-range::-webkit-slider-thumb {
-            background: #007bff;
-        }
+/* ═══════════════════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════════════════ */
+#hero {
+  min-height: 100vh; position: relative;
+  display: flex; align-items: center;
+  background: radial-gradient(ellipse 80% 60% at 60% 50%, rgba(0,40,80,0.5) 0%, var(--bg0) 70%);
+  overflow: hidden;
+}
+#particle-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+  pointer-events: none;
+}
+.hero-left {
+  position: relative; z-index: 10; padding: 0 5% 0 6%;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 16px;
+  background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.25);
+  border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+  color: var(--cyan); margin-bottom: 22px;
+  opacity: 0; transform: translateY(-8px); animation: fadeDown 0.6s 0.4s ease forwards;
+}
+.live-dot {
+  width: 7px; height: 7px; background: var(--green);
+  border-radius: 50%; animation: blink 1.4s ease infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.8)} }
+@keyframes fadeDown { to{opacity:1;transform:translateY(0)} }
 
-        .custom-range::-moz-range-thumb {
-            background: #007bff;
-        }
+.hero-title {
+  font-family: 'Orbitron', monospace; font-weight: 900;
+  font-size: clamp(2.8rem, 5.5vw, 5.4rem);
+  line-height: 1.05; margin-bottom: 20px;
+  opacity: 0; transform: translateY(28px); animation: fadeUp 0.85s 0.6s ease forwards;
+}
+.hero-title .t1 { display: block; color: var(--fg0); }
+.hero-title .t2 {
+  display: block;
+  background: linear-gradient(135deg, var(--cyan) 0%, #00aaff 40%, var(--orange) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+@keyframes fadeUp { to{opacity:1;transform:translateY(0)} }
 
-        .custom-range::-ms-thumb {
-            background: #007bff;
-        }
-    </style>
+.hero-sub {
+  font-size: 1.05rem; color: var(--fg1); max-width: 480px;
+  line-height: 1.75; margin-bottom: 34px;
+  opacity: 0; transform: translateY(20px); animation: fadeUp 0.75s 0.85s ease forwards;
+}
+.hero-btns {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  opacity: 0; animation: fadeUp 0.65s 1.05s ease forwards;
+}
+.btn-glow {
+  padding: 13px 30px; border-radius: 8px;
+  font-family: 'Orbitron', monospace; font-weight: 700; font-size: 0.78rem;
+  letter-spacing: 0.06em; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 9px;
+  transition: all 0.28s ease; border: none;
+}
+.btn-glow-primary {
+  background: linear-gradient(135deg, var(--cyan), var(--cyan2));
+  color: #000;
+}
+.btn-glow-primary:hover { transform: translateY(-2px); box-shadow: 0 0 28px rgba(0,212,255,0.45); color: #000; }
+.btn-glow-outline {
+  background: transparent; border: 1px solid rgba(0,212,255,0.35); color: var(--cyan);
+}
+.btn-glow-outline:hover { background: rgba(0,212,255,0.08); box-shadow: 0 0 20px rgba(0,212,255,0.2); color: var(--cyan); }
+
+.hero-metrics {
+  display: flex; gap: 32px; margin-top: 44px;
+  opacity: 0; animation: fadeUp 0.65s 1.2s ease forwards;
+}
+.hero-metric-val {
+  font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 700;
+  color: var(--cyan); line-height: 1.1;
+}
+.hero-metric-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+  color: var(--fg2); text-transform: uppercase; letter-spacing: 0.12em;
+  margin-top: 3px;
+}
+
+/* Earth Globe Container */
+.earth-wrap {
+  position: absolute; right: -2%; top: 50%; transform: translateY(-50%);
+  width: 52vw; max-width: 680px; aspect-ratio: 1;
+  z-index: 2;
+}
+#earth-canvas { width: 100%; height: 100%; display: block; }
+
+/* Overlay data cards around earth */
+.orb-card {
+  position: absolute; z-index: 20;
+  background: rgba(0,14,32,0.88); backdrop-filter: blur(12px);
+  border: 1px solid var(--glassb); border-radius: 10px;
+  padding: 10px 14px; font-family: 'JetBrains Mono', monospace;
+  animation: floatCard 5s ease-in-out infinite;
+  white-space: nowrap;
+}
+.orb-card-lbl { font-size: 0.58rem; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.1em; }
+.orb-card-val { font-size: 0.92rem; font-weight: 600; margin-top: 2px; }
+.oc1 { top: 16%; left: -60px; border-left: 2px solid var(--orange); animation-delay: 0s; }
+.oc2 { top: 44%; left: -80px; border-left: 2px solid var(--red); animation-delay: 1.6s; }
+.oc3 { bottom: 20%; left: -50px; border-left: 2px solid var(--cyan); animation-delay: 3.2s; }
+@keyframes floatCard {
+  0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TICKER BAR
+═══════════════════════════════════════════════════════════ */
+.ticker-wrap {
+  background: rgba(0,212,255,0.04);
+  border-top: 1px solid rgba(0,212,255,0.1);
+  border-bottom: 1px solid rgba(0,212,255,0.1);
+  overflow: hidden; position: relative; padding: 10px 0;
+}
+.ticker-label {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  display: flex; align-items: center;
+  padding: 0 20px; z-index: 2;
+  background: linear-gradient(90deg, var(--bg0) 55%, transparent);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  color: var(--cyan); text-transform: uppercase; letter-spacing: 0.15em;
+  white-space: nowrap;
+}
+.ticker-track {
+  display: flex; animation: tickerScroll 50s linear infinite;
+  white-space: nowrap; will-change: transform;
+}
+.ticker-item {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 0 36px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  color: var(--fg1);
+}
+.ticker-val { color: var(--cyan); font-weight: 600; }
+.ticker-sep { color: var(--fg2); }
+.ticker-up { color: var(--orange); }
+.ticker-dn { color: var(--cyan); }
+@keyframes tickerScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION COMMONS
+═══════════════════════════════════════════════════════════ */
+.section-wrap { padding: 96px 0; }
+.sec-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 14px; border: 1px solid var(--glassb);
+  border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  color: var(--fg2); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 14px;
+}
+.sec-title {
+  font-family: 'Orbitron', monospace; font-weight: 700;
+  font-size: clamp(1.7rem, 3vw, 2.7rem); margin-bottom: 12px;
+}
+.sec-sub { color: var(--fg1); font-size: 0.95rem; line-height: 1.75; max-width: 580px; }
+
+/* Glass Cards */
+.gc {
+  background: var(--card); backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid var(--glassb); border-radius: var(--radius);
+  padding: 26px; position: relative; overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.gc::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.gc:hover::before { opacity: 1; }
+.gc:hover { border-color: rgba(0,212,255,0.18); box-shadow: var(--shadow-cyan); }
+.card-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+.card-heading { font-family: 'Orbitron', monospace; font-weight: 600; font-size: 0.95rem; margin-bottom: 20px; }
+
+/* ═══════════════════════════════════════════════════════════
+   SIMULATOR
+═══════════════════════════════════════════════════════════ */
+#simulator { background: radial-gradient(ellipse at top right, rgba(0,212,255,0.025) 0%, transparent 55%); }
+
+.scene-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+.scene-btn {
+  padding: 5px 13px; border-radius: 6px; font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem; cursor: pointer; border: 1px solid; background: transparent;
+  transition: all 0.2s ease; letter-spacing: 0.05em;
+}
+.sb-bau { border-color: rgba(255,45,85,0.4); color: var(--red); }
+.sb-bau:hover, .sb-bau.active { background: rgba(255,45,85,0.1); }
+.sb-mod { border-color: rgba(255,107,43,0.4); color: var(--orange); }
+.sb-mod:hover, .sb-mod.active { background: rgba(255,107,43,0.1); }
+.sb-nz { border-color: rgba(57,255,20,0.4); color: var(--green); }
+.sb-nz:hover, .sb-nz.active { background: rgba(57,255,20,0.1); }
+
+.param-row { margin-bottom: 18px; }
+.param-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+.param-lbl {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--fg1);
+  display: flex; align-items: center; gap: 7px;
+}
+.param-icon { font-size: 0.75rem; }
+.param-val { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; font-weight: 600; color: var(--cyan); }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,0.08); outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--cyan); cursor: pointer; border: 2px solid var(--bg0);
+  box-shadow: 0 0 8px rgba(0,212,255,0.5); transition: all 0.2s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  width: 18px; height: 18px; box-shadow: 0 0 15px rgba(0,212,255,0.7);
+}
+
+.run-btn {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(0,212,255,0.05));
+  border: 1px solid rgba(0,212,255,0.35); border-radius: 9px;
+  color: var(--cyan); font-family: 'Orbitron', monospace; font-weight: 700;
+  font-size: 0.8rem; letter-spacing: 0.08em; cursor: pointer;
+  transition: all 0.28s ease; display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 4px;
+}
+.run-btn:hover { background: linear-gradient(135deg, rgba(0,212,255,0.28), rgba(0,212,255,0.1)); box-shadow: 0 0 24px rgba(0,212,255,0.25); transform: translateY(-1px); }
+.run-btn.running { animation: runPulse 0.9s ease infinite; }
+@keyframes runPulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,0.35)} 50%{box-shadow:0 0 0 8px rgba(0,212,255,0)} }
+
+.results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.res-cell {
+  background: rgba(0,10,25,0.5); border: 1px solid var(--glassb); border-radius: 9px; padding: 13px;
+}
+.res-lbl { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.1em; }
+.res-val { font-family: 'Orbitron', monospace; font-size: 1.15rem; font-weight: 700; margin-top: 4px; }
+.res-unit { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--fg2); }
+.rv-hot { color: var(--orange); } .rv-red { color: var(--red); }
+.rv-cool { color: var(--cyan); } .rv-grn { color: var(--green); }
+
+/* Tipping inline */
+.tp-inline {
+  display: flex; align-items: flex-start; gap: 12px; padding: 11px 14px;
+  background: rgba(255,45,85,0.05); border: 1px solid rgba(255,45,85,0.1);
+  border-radius: 9px; margin-bottom: 8px; transition: all 0.3s ease;
+}
+.tp-inline.reached { background: rgba(255,45,85,0.1); border-color: rgba(255,45,85,0.3); }
+.tp-tmp { font-family: 'Orbitron', monospace; font-size: 0.88rem; font-weight: 700; color: var(--red); min-width: 48px; }
+.tp-nm { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fg0); margin-bottom: 2px; }
+.tp-ds { font-size: 0.66rem; color: var(--fg2); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════════════════
+   AI ADVISOR
+═══════════════════════════════════════════════════════════ */
+#ai-section { background: radial-gradient(ellipse at bottom left, rgba(139,92,246,0.04) 0%, transparent 55%); }
+.chat-box {
+  display: flex; flex-direction: column;
+  height: 440px; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--glassb); background: var(--card);
+  backdrop-filter: blur(20px);
+}
+.chat-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--glassb);
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0,10,25,0.4);
+}
+.chat-status-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: blink 1.8s ease infinite; }
+.chat-title { font-family: 'Orbitron', monospace; font-size: 0.78rem; font-weight: 600; }
+.chat-model { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--fg2); margin-left: auto; }
+.chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.chat-msgs::-webkit-scrollbar { width: 3px; }
+.chat-msgs::-webkit-scrollbar-thumb { background: var(--purple); }
+.msg { display: flex; gap: 10px; animation: msgIn 0.3s ease; }
+.msg.user { flex-direction: row-reverse; }
+@keyframes msgIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.av {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.68rem; flex-shrink: 0;
+}
+.av-ai { background: linear-gradient(135deg, var(--purple), #4c1d95); }
+.av-user { background: linear-gradient(135deg, var(--cyan2), #005577); }
+.bubble {
+  max-width: 74%; padding: 10px 14px; border-radius: 10px;
+  font-size: 0.82rem; line-height: 1.65;
+}
+.bubble-ai { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.18); border-radius: 4px 10px 10px 10px; }
+.bubble-user { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.18); border-radius: 10px 4px 10px 10px; }
+.quick-qs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px; }
+.qq {
+  padding: 4px 10px;
+  background: rgba(139,92,246,0.07); border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.63rem;
+  color: var(--purple); cursor: pointer; transition: all 0.2s ease;
+}
+.qq:hover { background: rgba(139,92,246,0.15); }
+.chat-inp-row {
+  display: flex; gap: 9px; padding: 12px 14px; border-top: 1px solid var(--glassb);
+  background: rgba(0,10,25,0.3);
+}
+.chat-inp {
+  flex: 1; background: rgba(255,255,255,0.04); border: 1px solid var(--glassb);
+  border-radius: 7px; padding: 9px 13px; color: var(--fg0);
+  font-family: 'Syne', sans-serif; font-size: 0.83rem;
+  outline: none; transition: border-color 0.25s ease;
+}
+.chat-inp:focus { border-color: rgba(139,92,246,0.4); }
+.chat-inp::placeholder { color: var(--fg2); }
+.send-btn {
+  width: 38px; height: 38px; background: linear-gradient(135deg, var(--purple), #4c1d95);
+  border: none; border-radius: 7px; color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.25s ease;
+}
+.send-btn:hover { box-shadow: 0 0 14px rgba(139,92,246,0.5); transform: scale(1.05); }
+.typing-dots { display: flex; gap: 4px; padding: 6px 8px; }
+.td { width: 6px; height: 6px; background: var(--purple); border-radius: 50%; animation: typeDot 1.3s ease infinite; }
+.td:nth-child(2){animation-delay:0.2s} .td:nth-child(3){animation-delay:0.4s}
+@keyframes typeDot { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-8px);opacity:1} }
+
+/* ═══════════════════════════════════════════════════════════
+   MAP
+═══════════════════════════════════════════════════════════ */
+.map-shell { height: 500px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--glassb); }
+.leaflet-container { background: #000a14 !important; }
+.leaflet-popup-content-wrapper {
+  background: rgba(0,14,32,0.95) !important; border: 1px solid rgba(0,212,255,0.2) !important;
+  border-radius: 10px !important; box-shadow: 0 0 20px rgba(0,212,255,0.15) !important;
+}
+.leaflet-popup-tip { background: rgba(0,14,32,0.95) !important; }
+.leaflet-popup-close-button { color: var(--fg2) !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   TIPPING POINTS TIMELINE
+═══════════════════════════════════════════════════════════ */
+#tipping { background: radial-gradient(ellipse at center, rgba(255,45,85,0.03) 0%, transparent 60%); }
+.tp-axis-wrap { position: relative; padding: 50px 0 40px; }
+.tp-axis {
+  position: relative; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px;
+}
+.tp-fill {
+  position: absolute; top: 0; left: 0; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--green), var(--orange), var(--red));
+  transition: width 1.2s cubic-bezier(0.25,1,0.5,1); width: 0%;
+}
+.tp-mk {
+  position: absolute; top: 50%; transform: translate(-50%,-50%);
+}
+.tp-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--bg0); transition: all 0.3s ease;
+}
+.tp-dot.lit { box-shadow: 0 0 12px currentColor; }
+.tp-mlbl {
+  position: absolute; font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem; white-space: nowrap;
+  transform: translateX(-50%); top: -34px;
+  text-align: center; line-height: 1.3;
+}
+.tp-mtemp {
+  position: absolute; font-family: 'Orbitron', monospace;
+  font-size: 0.65rem; font-weight: 700; white-space: nowrap;
+  transform: translateX(-50%); bottom: -26px;
+}
+.tp-big-card {
+  padding: 16px 20px;
+  background: rgba(255,45,85,0.04); border: 1px solid rgba(255,45,85,0.08);
+  border-radius: 12px; display: flex; gap: 14px; align-items: flex-start;
+  transition: all 0.3s ease; height: 100%;
+}
+.tp-big-card.lit { background: rgba(255,45,85,0.1); border-color: rgba(255,45,85,0.28); }
+.tp-big-t { font-family: 'Orbitron', monospace; font-weight: 700; font-size: 1rem; min-width: 52px; }
+.tp-big-n { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--fg0); margin-bottom: 4px; }
+.tp-big-d { font-size: 0.7rem; color: var(--fg2); line-height: 1.55; }
+
+/* ═══════════════════════════════════════════════════════════
+   SCENARIO COMPARISON
+═══════════════════════════════════════════════════════════ */
+#comparison { background: radial-gradient(ellipse at top right, rgba(0,212,255,0.02) 0%, transparent 50%); }
+.cmp-group { margin-bottom: 26px; }
+.cmp-metric-lbl { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--fg2); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+.bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.bar-sc { font-family: 'JetBrains Mono', monospace; font-size: 0.63rem; color: var(--fg2); min-width: 88px; }
+.bar-track { flex: 1; height: 7px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; width: 0%; transition: width 1.6s cubic-bezier(0.25,1,0.5,1); }
+.bar-num { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; font-weight: 600; min-width: 52px; text-align: right; }
+
+/* ═══════════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════════ */
+footer {
+  background: rgba(0,2,8,0.96); border-top: 1px solid var(--glassb);
+  padding: 44px 0 22px;
+}
+.foot-brand { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.15rem; background: linear-gradient(90deg, var(--cyan), var(--orange)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.foot-copy { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--fg2); margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--glassb); display: flex; justify-content: space-between; }
+
+/* Utilities */
+.t-cyan{color:var(--cyan)} .t-orange{color:var(--orange)} .t-red{color:var(--red)}
+.t-green{color:var(--green)} .t-purple{color:var(--purple)}
+.mono{font-family:'JetBrains Mono',monospace}
+
+@media(max-width:992px){ .earth-wrap{display:none} .hero-left{padding:0 5%} }
+@media(max-width:576px){ .hero-metrics{gap:18px} .hero-metric-val{font-size:1.1rem} }
+
+/* AOS-like fade-in */
+[data-reveal] { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+[data-reveal].revealed { opacity: 1; transform: translateY(0); }
+[data-reveal-delay="1"] { transition-delay: 0.1s; }
+[data-reveal-delay="2"] { transition-delay: 0.2s; }
+[data-reveal-delay="3"] { transition-delay: 0.3s; }
+[data-reveal-delay="4"] { transition-delay: 0.4s; }
+</style>
 </head>
 <body>
-    <div class="container-fluid py-5">
-        <h1 class="text-center mb-5">Advanced Climate Change Simulator</h1>
 
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Simulation Controls</h5>
-                        <form id="simulationForm">
-                            <div class="mb-3">
-                                <label for="yearRange" class="form-label">Simulation Years: <span id="yearRangeValue">50</span></label>
-                                <input type="range" class="form-range" id="yearRange" min="10" max="200" value="50">
-                            </div>
-                            <div class="mb-3">
-                                <label for="emissionReduction" class="form-label">Emission Reduction (%): <span id="emissionReductionValue">50</span></label>
-                                <input type="range" class="form-range" id="emissionReduction" min="0" max="100" value="50">
-                            </div>
-                            <div class="mb-3">
-                                <label for="renewableEnergy" class="form-label">Renewable Energy (%): <span id="renewableEnergyValue">50</span></label>
-                                <input type="range" class="form-range" id="renewableEnergy" min="0" max="100" value="50">
-                            </div>
-                            <div class="mb-3">
-                                <label for="deforestationRate" class="form-label">Deforestation Rate (%): <span id="deforestationRateValue">50</span></label>
-                                <input type="range" class="form-range" id="deforestationRate" min="0" max="100" value="50">
-                            </div>
-                            <div class="mb-3">
-                                <label for="carbonCapture" class="form-label">Carbon Capture Efficiency (%): <span id="carbonCaptureValue">50</span></label>
-                                <input type="range" class="form-range" id="carbonCapture" min="0" max="100" value="50">
-                            </div>
-                            <div class="mb-3">
-                                <label for="populationGrowth" class="form-label">Population Growth Rate (%): <span id="populationGrowthValue">1.0</span></label>
-                                <input type="range" class="form-range" id="populationGrowth" min="0" max="5" step="0.1" value="1.0">
-                            </div>
-                            <button type="button" id="runSimulation" class="btn btn-primary w-100">Run Simulation</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Preset Scenarios</h5>
-                        <select id="presetScenarios" class="form-select mb-3">
-                            <option value="custom">Custom</option>
-                            <option value="businessAsUsual">Business as Usual</option>
-                            <option value="moderateAction">Moderate Action</option>
-                            <option value="aggressiveMitigation">Aggressive Mitigation</option>
-                        </select>
-                        <button type="button" id="applyScenario" class="btn btn-secondary w-100">Apply Scenario</button>
-                    </div>
-                </div>
-            </div>
+<!-- ══ LOADER ══ -->
+<div id="loader">
+  <div class="loader-logo">CLIMACORE</div>
+  <div class="loader-track"><div class="loader-bar"></div></div>
+  <div class="loader-status" id="loader-status">Initializing Earth Systems...</div>
+</div>
 
-            <div class="col-md-8">
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Temperature Projection</h5>
-                        <canvas id="temperatureChart"></canvas>
-                    </div>
-                </div>
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Global Impact Map</h5>
-                        <div id="globalMap"></div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h5 class="card-title">Sea Level Rise</h5>
-                                <canvas id="seaLevelChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h5 class="card-title">Biodiversity Index</h5>
-                                <canvas id="biodiversityChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Simulation Results</h5>
-                        <div id="simulationResults"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- ══ NAVBAR ══ -->
+<nav class="nav-main">
+  <div class="container-fluid px-4 d-flex align-items-center gap-3">
+    <a href="#hero" class="nav-brand">⬡ CLIMACORE</a>
+    <div class="d-none d-lg-flex gap-1 ms-4">
+      <a class="nav-link-custom" href="#simulator">Simulator</a>
+      <a class="nav-link-custom" href="#ai-section">AI Advisor</a>
+      <a class="nav-link-custom" href="#impact-map">Impact Map</a>
+      <a class="nav-link-custom" href="#tipping">Tipping Points</a>
+      <a class="nav-link-custom" href="#comparison">Scenarios</a>
     </div>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <div class="co2-pill">CO₂ <span id="nav-co2">421.8</span> ppm</div>
+    </div>
+  </div>
+</nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
-    <script>
-        // Initialize charts and map
-        let temperatureChart, seaLevelChart, biodiversityChart, map;
+<!-- ══ HERO ══ -->
+<section id="hero">
+  <canvas id="particle-canvas"></canvas>
 
-        document.addEventListener('DOMContentLoaded', function () {
-            initializeCharts();
-            initializeMap();
-            attachEventListeners();
-        });
+  <!-- Earth globe -->
+  <div class="earth-wrap">
+    <canvas id="earth-canvas"></canvas>
+    <div class="orb-card oc1">
+      <div class="orb-card-lbl">Atmospheric CO₂</div>
+      <div class="orb-card-val t-orange" id="oc-co2">421.8 ppm</div>
+    </div>
+    <div class="orb-card oc2">
+      <div class="orb-card-lbl">Temp. Anomaly</div>
+      <div class="orb-card-val t-red">+1.21°C</div>
+    </div>
+    <div class="orb-card oc3">
+      <div class="orb-card-lbl">Arctic Ice Extent</div>
+      <div class="orb-card-val t-cyan">4.72M km²</div>
+    </div>
+  </div>
 
-        function initializeCharts() {
-            temperatureChart = new Chart(document.getElementById('temperatureChart').getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Global Temperature Increase (°C)',
-                        data: [],
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Temperature Increase (°C)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Year'
-                            }
-                        }
-                    }
-                }
-            });
+  <!-- Hero text -->
+  <div class="container-fluid">
+    <div class="row" style="min-height:100vh;align-items:center;">
+      <div class="col-lg-6">
+        <div class="hero-left">
+          <div class="hero-badge">
+            <span class="live-dot"></span>
+            Live Climate Observatory
+          </div>
+          <h1 class="hero-title">
+            <span class="t1">CLIMACORE</span>
+            <span class="t2">Hub</span>
+          </h1>
+          <p class="hero-sub">
+            Physics-based climate simulation with six-parameter feedback loops,
+            AI-powered analysis, and 200-year Earth system projections — all in real-time.
+          </p>
+          <div class="hero-btns">
+            <a href="#simulator" class="btn-glow btn-glow-primary"><i class="fas fa-play"></i>Run Simulation</a>
+            <a href="#ai-section" class="btn-glow btn-glow-outline"><i class="fas fa-brain"></i>AI Advisor</a>
+          </div>
+          <div class="hero-metrics">
+            <div>
+              <div class="hero-metric-val" id="hm-co2">421.8</div>
+              <div class="hero-metric-label">CO₂ ppm</div>
+            </div>
+            <div>
+              <div class="hero-metric-val">+1.21°C</div>
+              <div class="hero-metric-label">Since 1850</div>
+            </div>
+            <div>
+              <div class="hero-metric-val">+101mm</div>
+              <div class="hero-metric-label">Sea Rise '93→</div>
+            </div>
+            <div>
+              <div class="hero-metric-val">415K</div>
+              <div class="hero-metric-label">Species at Risk</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-            seaLevelChart = new Chart(document.getElementById('seaLevelChart').getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Sea Level Rise (cm)',
-                        data: [],
-                        borderColor: 'rgb(54, 162, 235)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Sea Level Rise (cm)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Year'
-                            }
-                        }
-                    }
-                }
-            });
+<!-- ══ TICKER ══ -->
+<div class="ticker-wrap">
+  <div class="ticker-label">LIVE DATA</div>
+  <div class="ticker-track" id="ticker"></div>
+</div>
 
-            biodiversityChart = new Chart(document.getElementById('biodiversityChart').getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Biodiversity Index',
-                        data: [],
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 1,
-                            title: {
-                                display: true,
-                                text: 'Biodiversity Index'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Year'
-                            }
-                        }
-                    }
-                }
-            });
+<!-- ══ SIMULATOR ══ -->
+<section id="simulator" class="section-wrap">
+  <div class="container-fluid px-4 px-lg-5">
+    <div class="text-center mb-5" data-reveal>
+      <div class="sec-badge"><i class="fas fa-atom fa-xs"></i> Physics Engine v3.1</div>
+      <h2 class="sec-title">Climate <span class="t-cyan">Simulator</span></h2>
+      <p class="sec-sub mx-auto">Six-parameter model with feedback loops, non-linear sea level equations, and biodiversity cascade dynamics.</p>
+    </div>
+    <div class="row g-4">
+      <!-- Controls -->
+      <div class="col-xl-4 col-lg-5" data-reveal>
+        <div class="gc h-100">
+          <div class="card-mono">// parameters</div>
+          <div class="card-heading">Simulation Controls</div>
+          <div class="scene-btns">
+            <button class="scene-btn sb-bau" onclick="applyScene('bau',this)">Business as Usual</button>
+            <button class="scene-btn sb-mod" onclick="applyScene('mod',this)">Moderate Action</button>
+            <button class="scene-btn sb-nz" onclick="applyScene('nz',this)">Net Zero 2050</button>
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <div class="param-lbl"><span class="param-icon">📅</span> Simulation Years</div>
+              <div class="param-val" id="lv-yrs">50</div>
+            </div>
+            <input type="range" id="sl-yrs" min="10" max="200" value="50" oninput="sv('lv-yrs',this.value)">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <div class="param-lbl"><span class="param-icon">🏭</span> Emission Reduction</div>
+              <div class="param-val" id="lv-em">50%</div>
+            </div>
+            <input type="range" id="sl-em" min="0" max="100" value="50" oninput="sv('lv-em',this.value+'%')">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <div class="param-lbl"><span class="param-icon">☀️</span> Renewable Energy</div>
+              <div class="param-val" id="lv-re">50%</div>
+            </div>
+            <input type="range" id="sl-re" min="0" max="100" value="50" oninput="sv('lv-re',this.value+'%')">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <div class="param-lbl"><span class="param-icon">🌲</span> Deforestation Rate</div>
+              <div class="param-val" id="lv-df">50%</div>
+            </div>
+            <input type="range" id="sl-df" min="0" max="100" value="50" oninput="sv('lv-df',this.value+'%')">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <div class="param-lbl"><span class="param-icon">⚗️</span> Carbon Capture</div>
+              <div class="param-val" id="lv-cc">50%</div>
+            </div>
+            <input type="range" id="sl-cc" min="0" max="100" value="50" oninput="sv('lv-cc',this.value+'%')">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <div class="param-lbl"><span class="param-icon">👥</span> Population Growth</div>
+              <div class="param-val" id="lv-pg">1.0%/yr</div>
+            </div>
+            <input type="range" id="sl-pg" min="0" max="5" step="0.1" value="1.0" oninput="sv('lv-pg',this.value+'%/yr')">
+          </div>
+          <button class="run-btn" id="run-btn" onclick="runSim()">
+            <i class="fas fa-bolt"></i><span id="run-txt">RUN SIMULATION</span>
+          </button>
+          <div id="results-area" style="display:none">
+            <div class="results-grid">
+              <div class="res-cell">
+                <div class="res-lbl">Temp Rise</div>
+                <div class="res-val rv-hot" id="rv-temp">—</div>
+                <div class="res-unit">°C increase</div>
+              </div>
+              <div class="res-cell">
+                <div class="res-lbl">Sea Level</div>
+                <div class="res-val rv-cool" id="rv-sea">—</div>
+                <div class="res-unit">centimeters</div>
+              </div>
+              <div class="res-cell">
+                <div class="res-lbl">Biodiversity</div>
+                <div class="res-val rv-grn" id="rv-bio">—</div>
+                <div class="res-unit">index score</div>
+              </div>
+              <div class="res-cell">
+                <div class="res-lbl">GDP Loss</div>
+                <div class="res-val rv-red" id="rv-gdp">—</div>
+                <div class="res-unit">% global GDP</div>
+              </div>
+            </div>
+            <div id="tp-area" style="display:none">
+              <div class="card-mono mt-3 mb-2">// tipping points breached</div>
+              <div id="tp-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Charts -->
+      <div class="col-xl-8 col-lg-7">
+        <div class="row g-4">
+          <div class="col-12" data-reveal data-reveal-delay="1">
+            <div class="gc">
+              <div class="card-mono">// temperature projection</div>
+              <div class="card-heading">Global Temperature Anomaly (°C)</div>
+              <canvas id="chart-temp" height="110"></canvas>
+            </div>
+          </div>
+          <div class="col-md-4" data-reveal data-reveal-delay="2">
+            <div class="gc">
+              <div class="card-mono">// ocean levels</div>
+              <div class="card-heading">Sea Level Rise</div>
+              <canvas id="chart-sea" height="180"></canvas>
+            </div>
+          </div>
+          <div class="col-md-4" data-reveal data-reveal-delay="3">
+            <div class="gc">
+              <div class="card-mono">// ecosystem</div>
+              <div class="card-heading">Biodiversity Index</div>
+              <canvas id="chart-bio" height="180"></canvas>
+            </div>
+          </div>
+          <div class="col-md-4" data-reveal data-reveal-delay="4">
+            <div class="gc">
+              <div class="card-mono">// carbon flux</div>
+              <div class="card-heading">Atmospheric CO₂</div>
+              <canvas id="chart-co2" height="180"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ AI ADVISOR ══ -->
+<section id="ai-section" class="section-wrap">
+  <div class="container-fluid px-4 px-lg-5">
+    <div class="row g-4 align-items-start">
+      <div class="col-lg-5" data-reveal>
+        <div class="sec-badge"><i class="fas fa-brain fa-xs"></i> Groq LLaMA 3.3 · 70B</div>
+        <h2 class="sec-title">Climate <span class="t-purple">AI Advisor</span></h2>
+        <p class="sec-sub mb-4">Powered by Groq's ultra-fast inference. Ask about climate science, tipping points, IPCC data, or get your simulation results analysed.</p>
+        <div class="gc mb-3">
+          <div class="card-mono mb-2">// api configuration</div>
+          <input type="password" class="chat-inp w-100 mb-2" id="groq-key" placeholder="Groq API key (pre-configured)" value="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">
+          <div class="mono" style="font-size:0.6rem;color:var(--fg2);">Session-only · never persisted · Groq servers</div>
+        </div>
+        <div class="gc">
+          <div class="card-mono mb-2">// capabilities</div>
+          <div class="mono" style="font-size:0.72rem;color:var(--fg1);line-height:2.1;">
+            ▸ Climate physics & IPCC AR6 Q&amp;A<br>
+            ▸ Simulation result interpretation<br>
+            ▸ Carbon budget calculations<br>
+            ▸ Tipping point cascade analysis<br>
+            ▸ Net-zero policy pathways<br>
+            ▸ Real-time context awareness
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-7" data-reveal data-reveal-delay="2">
+        <div class="chat-box">
+          <div class="chat-header">
+            <span class="chat-status-dot"></span>
+            <span class="chat-title">CLIMACORE AI ADVISOR</span>
+            <span class="chat-model">llama-3.3-70b-versatile via groq</span>
+          </div>
+          <div class="chat-msgs" id="chat-msgs">
+            <div class="msg">
+              <div class="av av-ai"><i class="fas fa-leaf fa-xs"></i></div>
+              <div class="bubble bubble-ai">
+                Hello, I'm your ClimaCore AI Advisor powered by LLaMA 3.3 70B. I can help you understand climate science, analyse your simulation results, or discuss mitigation strategies. What would you like to explore today?
+              </div>
+            </div>
+          </div>
+          <div class="quick-qs">
+            <button class="qq" onclick="quickQ(this)">What is a tipping point?</button>
+            <button class="qq" onclick="quickQ(this)">Explain Paris Agreement</button>
+            <button class="qq" onclick="quickQ(this)">How does carbon capture work?</button>
+            <button class="qq" onclick="quickQ(this)">Analyse my simulation</button>
+            <button class="qq" onclick="quickQ(this)">Net zero pathway?</button>
+          </div>
+          <div class="chat-inp-row">
+            <input type="text" class="chat-inp" id="chat-inp" placeholder="Ask about climate science..." onkeydown="if(event.key==='Enter')sendMsg()">
+            <button class="send-btn" onclick="sendMsg()"><i class="fas fa-paper-plane fa-xs"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ IMPACT MAP ══ -->
+<section id="impact-map" class="section-wrap">
+  <div class="container-fluid px-4 px-lg-5">
+    <div class="text-center mb-5" data-reveal>
+      <div class="sec-badge"><i class="fas fa-globe fa-xs"></i> 14 Vulnerability Zones</div>
+      <h2 class="sec-title">Global <span class="t-orange">Impact Map</span></h2>
+      <p class="sec-sub mx-auto">Major climate vulnerability zones rendered from your simulation temperature output. Click any hotspot for details.</p>
+    </div>
+    <div class="gc p-0 overflow-hidden" data-reveal>
+      <div id="map" class="map-shell"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ TIPPING POINTS ══ -->
+<section id="tipping" class="section-wrap">
+  <div class="container-fluid px-4 px-lg-5">
+    <div class="text-center mb-5" data-reveal>
+      <div class="sec-badge"><i class="fas fa-exclamation-triangle fa-xs"></i> Critical Thresholds</div>
+      <h2 class="sec-title">Tipping <span class="t-red">Points</span></h2>
+      <p class="sec-sub mx-auto">Irreversible Earth-system thresholds. Run your simulation to see which ones are breached.</p>
+    </div>
+    <div class="gc mb-4" data-reveal>
+      <div class="card-mono mb-2">// critical temperature threshold tracker</div>
+      <div class="tp-axis-wrap">
+        <div class="tp-axis" id="tp-axis">
+          <div class="tp-fill" id="tp-fill"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row g-3" id="tp-cards" data-reveal data-reveal-delay="2"></div>
+  </div>
+</section>
+
+<!-- ══ COMPARISON ══ -->
+<section id="comparison" class="section-wrap">
+  <div class="container-fluid px-4 px-lg-5">
+    <div class="text-center mb-5" data-reveal>
+      <div class="sec-badge"><i class="fas fa-chart-bar fa-xs"></i> Pathway Analysis</div>
+      <h2 class="sec-title">Scenario <span class="t-cyan">Comparison</span></h2>
+      <p class="sec-sub mx-auto">Side-by-side analysis of three climate trajectories projected to 2100.</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-lg-7" data-reveal>
+        <div class="gc">
+          <div class="card-mono mb-3">// metric comparison — year 2100</div>
+          <!-- Temperature -->
+          <div class="cmp-group">
+            <div class="cmp-metric-lbl">Global Temperature Rise (°C above pre-industrial)</div>
+            <div class="bar-row"><div class="bar-sc">Business as Usual</div><div class="bar-track"><div class="bar-fill" style="background:var(--red)" data-w="95" data-label="4.7°C"></div></div><div class="bar-num t-red" data-val="4.7°C">—</div></div>
+            <div class="bar-row"><div class="bar-sc">Moderate Action</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange)" data-w="55" data-label="2.7°C"></div></div><div class="bar-num t-orange" data-val="2.7°C">—</div></div>
+            <div class="bar-row"><div class="bar-sc">Net Zero 2050</div><div class="bar-track"><div class="bar-fill" style="background:var(--green)" data-w="20" data-label="1.4°C"></div></div><div class="bar-num t-green" data-val="1.4°C">—</div></div>
+          </div>
+          <!-- Sea Level -->
+          <div class="cmp-group">
+            <div class="cmp-metric-lbl">Sea Level Rise (cm)</div>
+            <div class="bar-row"><div class="bar-sc">Business as Usual</div><div class="bar-track"><div class="bar-fill" style="background:var(--red)" data-w="90" data-label="110cm"></div></div><div class="bar-num t-red" data-val="110cm">—</div></div>
+            <div class="bar-row"><div class="bar-sc">Moderate Action</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange)" data-w="50" data-label="60cm"></div></div><div class="bar-num t-orange" data-val="60cm">—</div></div>
+            <div class="bar-row"><div class="bar-sc">Net Zero 2050</div><div class="bar-track"><div class="bar-fill" style="background:var(--green)" data-w="16" data-label="20cm"></div></div><div class="bar-num t-green" data-val="20cm">—</div></div>
+          </div>
+          <!-- Biodiversity -->
+          <div class="cmp-group mb-0">
+            <div class="cmp-metric-lbl">Biodiversity Loss (%)</div>
+            <div class="bar-row"><div class="bar-sc">Business as Usual</div><div class="bar-track"><div class="bar-fill" style="background:var(--red)" data-w="87" data-label="38%"></div></div><div class="bar-num t-red" data-val="38%">—</div></div>
+            <div class="bar-row"><div class="bar-sc">Moderate Action</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange)" data-w="44" data-label="19%"></div></div><div class="bar-num t-orange" data-val="19%">—</div></div>
+            <div class="bar-row"><div class="bar-sc">Net Zero 2050</div><div class="bar-track"><div class="bar-fill" style="background:var(--green)" data-w="10" data-label="4%"></div></div><div class="bar-num t-green" data-val="4%">—</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-5" data-reveal data-reveal-delay="2">
+        <div class="gc">
+          <div class="card-mono mb-2">// integrated assessment radar</div>
+          <canvas id="chart-radar" height="300"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="container-fluid px-4 px-lg-5">
+    <div class="row">
+      <div class="col-lg-4 mb-4">
+        <div class="foot-brand">⬡ CLIMACORE</div>
+        <p class="mt-2" style="font-size:0.83rem;color:var(--fg2);line-height:1.75;">
+          Advanced climate simulation platform combining physics-based models with AI-powered analysis. Data from NOAA, NASA GISS, and IPCC AR6.
+        </p>
+      </div>
+      <div class="col-lg-8 d-flex justify-content-lg-end gap-5 flex-wrap">
+        <div>
+          <div class="mono mb-2" style="font-size:0.6rem;color:var(--cyan);text-transform:uppercase;letter-spacing:0.12em;">Data Sources</div>
+          <div style="font-size:0.78rem;color:var(--fg2);line-height:2.2;">NOAA Global Temperature<br>NASA GISS Surface Temp<br>IPCC AR6 Scenarios<br>ESA Climate Data</div>
+        </div>
+        <div>
+          <div class="mono mb-2" style="font-size:0.6rem;color:var(--cyan);text-transform:uppercase;letter-spacing:0.12em;">Technologies</div>
+          <div style="font-size:0.78rem;color:var(--fg2);line-height:2.2;">Three.js WebGL Earth<br>Groq LLaMA 3.3 70B<br>Chart.js Analytics<br>Leaflet.js Mapping</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot-copy">
+      <span>© 2024 CLIMACORE OBSERVATORY</span>
+      <span>Physics-Based Climate Science Platform</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL STATE
+═══════════════════════════════════════════════════════════ */
+const GROQ_DEFAULT = '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';
+const GROQ_MODEL   = 'llama-3.3-70b-versatile';
+let chatHistory = [];
+let lastSim = null;
+let charts = {};
+let cMap = null, mapLayers = [];
+
+/* ═══════════════════════════════════════════════════════════
+   LOADER
+═══════════════════════════════════════════════════════════ */
+const loaderMsgs = ['Initializing Earth Systems...','Loading Satellite Data...','Calibrating Physics Engine...','Connecting Groq AI...','Ready.'];
+let lmi = 0;
+const loaderInterval = setInterval(() => {
+  lmi++;
+  if(lmi < loaderMsgs.length) document.getElementById('loader-status').textContent = loaderMsgs[lmi];
+}, 500);
+
+window.addEventListener('load', () => {
+  clearInterval(loaderInterval);
+  setTimeout(() => {
+    const l = document.getElementById('loader');
+    l.style.opacity = '0';
+    setTimeout(() => l.remove(), 700);
+    heroAnimStart();
+  }, 2500);
+});
+
+/* ═══════════════════════════════════════════════════════════
+   HERO GSAP-LIKE ANIMATIONS (pure JS)
+═══════════════════════════════════════════════════════════ */
+function heroAnimStart() {
+  // Already handled by CSS animations
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PARTICLE CANVAS (hero background)
+═══════════════════════════════════════════════════════════ */
+(function() {
+  const cvs = document.getElementById('particle-canvas');
+  const ctx = cvs.getContext('2d');
+  const mols = [
+    {c:'#ff6b2b'},{c:'#ff2d55'},{c:'#00d4ff'},{c:'#8b5cf6'},{c:'#39ff14'}
+  ];
+  let W, H, pts = [], mX = -999, mY = -999;
+
+  function resize() {
+    W = cvs.width = cvs.offsetWidth;
+    H = cvs.height = cvs.offsetHeight;
+  }
+
+  function init() {
+    pts = [];
+    for(let i=0;i<110;i++) {
+      const m = mols[i % mols.length];
+      pts.push({
+        x: Math.random()*W, y: Math.random()*H,
+        vx:(Math.random()-.5)*.45, vy:(Math.random()-.5)*.45,
+        r: 1.5 + Math.random()*2.5,
+        c: m.c, a: .25+Math.random()*.5,
+        ph: Math.random()*Math.PI*2
+      });
+    }
+  }
+
+  window.addEventListener('resize', () => { resize(); init(); });
+  document.addEventListener('mousemove', e => { mX=e.clientX; mY=e.clientY; });
+  resize(); init();
+
+  (function draw() {
+    ctx.clearRect(0,0,W,H);
+    pts.forEach((p,i) => {
+      p.ph += .018;
+      const dist2M = Math.hypot(p.x-mX, p.y-mY);
+      if(dist2M < 160) {
+        const f = (160-dist2M)/160;
+        p.vx += (p.x-mX)/dist2M*f*.4;
+        p.vy += (p.y-mY)/dist2M*f*.4;
+      }
+      p.vx *= .978; p.vy *= .978;
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0) p.x=W; if(p.x>W) p.x=0;
+      if(p.y<0) p.y=H; if(p.y>H) p.y=0;
+
+      // Connections
+      for(let j=i+1;j<Math.min(pts.length,i+12);j++) {
+        const dx=p.x-pts[j].x, dy=p.y-pts[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<90) {
+          ctx.beginPath();
+          ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.strokeStyle=`rgba(0,212,255,${0.07*(1-d/90)})`;
+          ctx.lineWidth=.5; ctx.stroke();
         }
+      }
 
-        function initializeMap() {
-            map = L.map('globalMap').setView([20, 0], 2);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-        }
+      // Glow
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*4);
+      g.addColorStop(0,p.c+'bb'); g.addColorStop(1,p.c+'00');
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=p.c; ctx.globalAlpha=p.a;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+    });
+    requestAnimationFrame(draw);
+  })();
+})();
 
-        function attachEventListeners() {
-            document.getElementById('runSimulation').addEventListener('click', runSimulation);
-            document.getElementById('applyScenario').addEventListener('click', applyScenario);
+/* ═══════════════════════════════════════════════════════════
+   THREE.JS EARTH GLOBE
+═══════════════════════════════════════════════════════════ */
+(function() {
+  const cvs = document.getElementById('earth-canvas');
+  if(!cvs || !window.THREE) return;
 
-            // Update range input values
-            document.querySelectorAll('input[type="range"]').forEach(input => {
-                input.addEventListener('input', function () {
-                    document.getElementById(this.id + 'Value').textContent = this.value;
-                });
-            });
-        }
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 1000);
+  camera.position.z = 2.6;
 
-        function runSimulation() {
-            const years = parseInt(document.getElementById('yearRange').value);
-            const emissionReduction = parseFloat(document.getElementById('emissionReduction').value) / 100;
-            const renewableEnergy = parseFloat(document.getElementById('renewableEnergy').value) / 100;
-            const deforestationRate = parseFloat(document.getElementById('deforestationRate').value) / 100;
-            const carbonCapture = parseFloat(document.getElementById('carbonCapture').value) / 100;
-            const populationGrowth = parseFloat(document.getElementById('populationGrowth').value) / 100;
+  const renderer = new THREE.WebGLRenderer({ canvas:cvs, antialias:true, alpha:true });
+  function setSize() {
+    const s = cvs.offsetWidth;
+    renderer.setSize(s, s);
+  }
+  setSize();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
 
-            const results = simulateClimateChange(years, emissionReduction, renewableEnergy, deforestationRate, carbonCapture, populationGrowth);
-            updateCharts(results);
-            updateMap(results);
-            displayResults(results);
-        }
+  const loader = new THREE.TextureLoader();
+  loader.crossOrigin = 'anonymous';
 
-        function simulateClimateChange(years, emissionReduction, renewableEnergy, deforestationRate, carbonCapture, populationGrowth) {
-            const baseTemperatureIncrease = 0.03; // 0.03°C per year under business as usual
-            const baseSeaLevelRise = 0.3; // 0.3cm per year under business as usual
-            const results = {
-                years: [],
-                temperatures: [],
-                seaLevels: [],
-                biodiversity: []
-            };
+  // Earth sphere
+  const earthGeo = new THREE.SphereGeometry(1, 64, 64);
+  const earthMat = new THREE.MeshPhongMaterial({
+    map:         loader.load('https://unpkg.com/three-globe@2.27.4/example/img/earth-blue-marble.jpg'),
+    bumpMap:     loader.load('https://unpkg.com/three-globe@2.27.4/example/img/earth-topology.png'),
+    bumpScale:   0.045,
+    specularMap: loader.load('https://unpkg.com/three-globe@2.27.4/example/img/earth-water.png'),
+    specular:    new THREE.Color(0x224466),
+    shininess:   20
+  });
+  const earth = new THREE.Mesh(earthGeo, earthMat);
+  scene.add(earth);
 
-            let currentTemp = 0;
-            let currentSeaLevel = 0;
-            let currentBiodiversity = 1;
+  // Clouds
+  const cloudMat = new THREE.MeshPhongMaterial({
+    map:         loader.load('https://unpkg.com/three-globe@2.27.4/example/img/earth-clouds.png'),
+    transparent: true, opacity: 0.38, depthWrite: false
+  });
+  const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.015,64,64), cloudMat);
+  scene.add(clouds);
 
-            for (let year = 2023; year < 2023 + years; year++) {
-                results.years.push(year);
+  // Atmosphere inner glow
+  const atmMat = new THREE.MeshPhongMaterial({ color:0x002244, transparent:true, opacity:.12, side:THREE.BackSide });
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06,32,32), atmMat));
 
-                // Calculate temperature change
-                let tempChange = baseTemperatureIncrease * (1 - emissionReduction) * (1 - renewableEnergy) * (1 + deforestationRate) * (1 - carbonCapture);
-                currentTemp += tempChange * (1 + Math.random() * 0.2 - 0.1); // Add some randomness
-                results.temperatures.push(currentTemp);
+  // Atmosphere outer haze (cyan)
+  const hazeMat = new THREE.MeshPhongMaterial({ color:0x00d4ff, transparent:true, opacity:.035, side:THREE.BackSide });
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.18,32,32), hazeMat));
 
-                // Calculate sea level rise
-                let seaLevelChange = baseSeaLevelRise * (1 + currentTemp / 2) * (1 - carbonCapture);
-                currentSeaLevel += seaLevelChange * (1 + Math.random() * 0.2 - 0.1); // Add some randomness
-                results.seaLevels.push(currentSeaLevel);
+  // Orbit rings
+  function addRing(radius, color, opacity, rx, ry) {
+    const g = new THREE.TorusGeometry(radius, 0.003, 8, 120);
+    const m = new THREE.MeshBasicMaterial({ color, transparent:true, opacity });
+    const r = new THREE.Mesh(g, m);
+    r.rotation.x = rx; r.rotation.y = ry;
+    scene.add(r); return r;
+  }
+  const ring1 = addRing(1.32, 0x00d4ff, .28, Math.PI/3.5, 0);
+  const ring2 = addRing(1.52, 0xff6b2b, .18, -Math.PI/5, Math.PI/8);
+  const ring3 = addRing(1.72, 0x8b5cf6, .12, Math.PI/2.2, Math.PI/4);
 
-                // Calculate biodiversity index
-                let biodiversityChange = -0.005 * (currentTemp / 2 + deforestationRate) * (1 + populationGrowth);
-                currentBiodiversity = Math.max(0, Math.min(1, currentBiodiversity + biodiversityChange));
-                results.biodiversity.push(currentBiodiversity);
-            }
+  // Satellites
+  function addSat(radius, color, speed, tiltX) {
+    const g = new THREE.SphereGeometry(0.018,8,8);
+    const m = new THREE.MeshBasicMaterial({ color });
+    const s = new THREE.Mesh(g, m);
+    scene.add(s);
+    return { mesh:s, radius, speed, angle:Math.random()*Math.PI*2, tiltX };
+  }
+  const sats = [
+    addSat(1.32, 0x00d4ff, 0.009, Math.PI/3.5),
+    addSat(1.52, 0xff6b2b, -0.006, -Math.PI/5),
+  ];
 
-            return results;
-        }
+  // Stars
+  const starVerts = [];
+  for(let i=0;i<2400;i++) {
+    const r=90+Math.random()*180;
+    const th=Math.random()*Math.PI*2;
+    const ph=Math.acos(2*Math.random()-1);
+    starVerts.push(r*Math.sin(ph)*Math.cos(th), r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph));
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xffffff, size:.28, transparent:true, opacity:.55 })));
 
-        function updateCharts(results) {
-            updateChart(temperatureChart, results.years, results.temperatures, 'Global Temperature Increase (°C)');
-            updateChart(seaLevelChart, results.years, results.seaLevels, 'Sea Level Rise (cm)');
-            updateChart(biodiversityChart, results.years, results.biodiversity, 'Biodiversity Index');
-        }
+  // Lights
+  scene.add(new THREE.AmbientLight(0x112233, .9));
+  const sun = new THREE.DirectionalLight(0xfff5e0, 1.6);
+  sun.position.set(5, 3, 5); scene.add(sun);
+  const rim = new THREE.DirectionalLight(0x004488, .35);
+  rim.position.set(-4,-2,-3); scene.add(rim);
 
-        function updateChart(chart, labels, data, label) {
-            chart.data.labels = labels;
-            chart.data.datasets[0].data = data;
-            chart.data.datasets[0].label = label;
-            chart.update();
-        }
+  // Mouse tilt
+  let tgtX=0, tgtY=0, curX=0, curY=0;
+  document.addEventListener('mousemove', e => {
+    tgtX = (e.clientX/window.innerWidth - .5) * .5;
+    tgtY = (e.clientY/window.innerHeight - .5) * .3;
+  });
 
-        function updateMap(results) {
-            map.eachLayer((layer) => {
-                if (layer instanceof L.Circle) {
-                    map.removeLayer(layer);
-                }
-            });
+  window.addEventListener('resize', setSize);
 
-            const maxTemp = Math.max(...results.temperatures);
-            results.temperatures.forEach((temp, index) => {
-                const lat = (Math.random() * 150) - 75;
-                const lon = (Math.random() * 360) - 180;
-                const radius = (temp / maxTemp) * 1000000;
-                const color = `hsl(${60 - temp * 10}, 100%, 50%)`;
-                L.circle([lat, lon], {
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.5,
-                    radius: radius
-                }).addTo(map);
-            });
-        }
+  (function animate() {
+    requestAnimationFrame(animate);
+    earth.rotation.y  += .0018;
+    clouds.rotation.y += .0022;
+    ring1.rotation.z  += .0025;
+    ring2.rotation.z  -= .0018;
+    ring3.rotation.z  += .001;
 
-        function displayResults(results) {
-            const lastIndex = results.temperatures.length - 1;
-            const resultsDiv = document.getElementById('simulationResults');
-            resultsDiv.innerHTML = `
-                        <p>Final year: ${results.years[lastIndex]}</p>
-                        <p>Temperature increase: ${results.temperatures[lastIndex].toFixed(2)}°C</p>
-                        <p>Sea level rise: ${results.seaLevels[lastIndex].toFixed(2)} cm</p>
-                     <p>Biodiversity index: ${results.biodiversity[lastIndex].toFixed(2)}</p>
-                `;
-        }
+    curX += (tgtX-curX)*.04;
+    curY += (tgtY-curY)*.04;
+    earth.rotation.x  = curY*.28;
+    clouds.rotation.x = curY*.28;
 
-        function applyScenario() {
-            const scenario = document.getElementById('presetScenarios').value;
-            switch (scenario) {
-                case 'businessAsUsual':
-                    setSliderValues(20, 30, 70, 10, 1.1);
-                    break;
-                case 'moderateAction':
-                    setSliderValues(50, 60, 40, 30, 0.9);
-                    break;
-                case 'aggressiveMitigation':
-                    setSliderValues(80, 90, 10, 70, 0.5);
-                    break;
-                default:
-                    // Custom scenario, do nothing
-                    break;
-            }
-        }
+    sats.forEach(s => {
+      s.angle += s.speed;
+      s.mesh.position.x = Math.cos(s.angle)*s.radius;
+      s.mesh.position.z = Math.sin(s.angle)*s.radius;
+      s.mesh.position.y = Math.sin(s.angle)*s.radius*Math.sin(s.tiltX)*.6;
+    });
+    renderer.render(scene, camera);
+  })();
+})();
 
-        function setSliderValues(emission, renewable, deforestation, capture, population) {
-            document.getElementById('emissionReduction').value = emission;
-            document.getElementById('renewableEnergy').value = renewable;
-            document.getElementById('deforestationRate').value = deforestation;
-            document.getElementById('carbonCapture').value = capture;
-            document.getElementById('populationGrowth').value = population;
+/* ═══════════════════════════════════════════════════════════
+   LIVE TICKER
+═══════════════════════════════════════════════════════════ */
+(function() {
+  const DATA = [
+    {l:'CO₂',v:'421.8 ppm',up:true},{l:'CH₄ Methane',v:'1923 ppb',up:true},
+    {l:'N₂O',v:'336 ppb',up:true},{l:'Global Temp Anomaly',v:'+1.21°C',up:true},
+    {l:'Arctic Sea Ice',v:'4.72M km²',up:false},{l:'Ocean Heat',v:'+3.1 ZJ',up:true},
+    {l:'Sea Level Rise (1993→)',v:'+101mm',up:true},{l:'Extreme Heat Events',v:'+2.7×',up:true},
+    {l:'Coral Bleaching',v:'54% of reefs',up:true},{l:'Amazon Loss',v:'9,500 km²/yr',up:true},
+    {l:'Glacier Mass Balance',v:'−267 Gt/yr',up:false},{l:'Greenland Ice Loss',v:'279 Gt/yr',up:true},
+  ];
+  const t = document.getElementById('ticker');
+  const html = [...DATA,...DATA].map(d => `
+    <div class="ticker-item">
+      <span class="ticker-sep">◆</span>
+      ${d.l}: <span class="ticker-val">${d.v}</span>
+      <span class="${d.up?'ticker-up':'ticker-dn'}">${d.up?'▲':'▼'}</span>
+    </div>`).join('');
+  t.innerHTML = html;
 
-            // Update displayed values
-            document.getElementById('emissionReductionValue').textContent = emission;
-            document.getElementById('renewableEnergyValue').textContent = renewable;
-            document.getElementById('deforestationRateValue').textContent = deforestation;
-            document.getElementById('carbonCaptureValue').textContent = capture;
-            document.getElementById('populationGrowthValue').textContent = population;
-        }
+  // Animate CO₂
+  let co2 = 421.8;
+  setInterval(() => {
+    co2 += (Math.random()-.3)*.05;
+    co2 = Math.round(co2*100)/100;
+    const v = co2.toFixed(1);
+    ['nav-co2','oc-co2','hm-co2'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = id === 'oc-co2' ? v+' ppm' : v;
+    });
+  }, 3000);
+})();
 
-        // Add tooltip functionality
-        const tooltips = [
-            { id: 'emissionReduction', text: 'Percentage reduction in greenhouse gas emissions compared to baseline' },
-            { id: 'renewableEnergy', text: 'Percentage of energy derived from renewable sources' },
-            { id: 'deforestationRate', text: 'Rate of forest loss compared to current levels' },
-            { id: 'carbonCapture', text: 'Efficiency of carbon capture and storage technologies' },
-            { id: 'populationGrowth', text: 'Annual global population growth rate' }
-        ];
+/* ═══════════════════════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════════════════════ */
+Chart.defaults.color = '#4a6070';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 9;
 
-        tooltips.forEach(tooltip => {
-            const element = document.getElementById(tooltip.id);
-            element.title = tooltip.text;
-        });
+const baseChartOpts = {
+  responsive:true,
+  plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(0,14,32,0.95)', titleFont:{family:'JetBrains Mono',size:9}, bodyFont:{family:'JetBrains Mono',size:9}, borderColor:'rgba(0,212,255,0.15)', borderWidth:1 } },
+  scales:{
+    x:{ grid:{color:'rgba(255,255,255,0.025)',drawBorder:false}, ticks:{maxTicksLimit:6,color:'#2a3845'} },
+    y:{ grid:{color:'rgba(255,255,255,0.025)',drawBorder:false}, ticks:{color:'#2a3845'} }
+  }
+};
 
-        // Add export functionality
-        function exportResults() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const charts = [temperatureChart, seaLevelChart, biodiversityChart];
+function mkLine(id, color, label, h) {
+  return new Chart(document.getElementById(id).getContext('2d'), {
+    type:'line',
+    data:{ labels:[], datasets:[{ label, data:[], borderColor:color, backgroundColor:color+'16', fill:true, tension:.4, borderWidth:2, pointRadius:0, pointHoverRadius:4 }] },
+    options:{ ...baseChartOpts, ...(h?{maintainAspectRatio:false}:{}) }
+  });
+}
 
-            canvas.width = 800;
-            canvas.height = charts.length * 300 + 100;
+charts.temp = mkLine('chart-temp','#ff6b2b','Temperature (°C)');
+charts.sea  = mkLine('chart-sea', '#00d4ff','Sea Level (cm)');
+charts.bio  = mkLine('chart-bio', '#39ff14','Biodiversity Index');
+charts.co2  = mkLine('chart-co2', '#8b5cf6','CO₂ (ppm)');
 
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+charts.radar = new Chart(document.getElementById('chart-radar').getContext('2d'),{
+  type:'radar',
+  data:{
+    labels:['Temp\nControl','Sea\nLevel','Biodiversity','Air\nQuality','Food\nSecurity','Economic\nStability'],
+    datasets:[
+      { label:'Business as Usual', data:[8,12,18,22,25,18], borderColor:'#ff2d55', backgroundColor:'rgba(255,45,85,0.08)', borderWidth:2, pointBackgroundColor:'#ff2d55', pointRadius:3 },
+      { label:'Moderate Action',   data:[42,38,48,52,42,50], borderColor:'#ff6b2b', backgroundColor:'rgba(255,107,43,0.08)', borderWidth:2, pointBackgroundColor:'#ff6b2b', pointRadius:3 },
+      { label:'Net Zero 2050',     data:[80,76,82,85,78,83], borderColor:'#39ff14', backgroundColor:'rgba(57,255,20,0.06)', borderWidth:2, pointBackgroundColor:'#39ff14', pointRadius:3 }
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{ legend:{ display:true, position:'bottom', labels:{ font:{family:'JetBrains Mono',size:8}, boxWidth:8, padding:10, color:'#4a6070' } } },
+    scales:{ r:{ grid:{color:'rgba(255,255,255,0.04)'}, pointLabels:{font:{family:'JetBrains Mono',size:8},color:'#4a6070'}, ticks:{display:false}, angleLines:{color:'rgba(255,255,255,0.04)'}, min:0,max:100 } }
+  }
+});
 
-            ctx.font = '20px Arial';
-            ctx.fillStyle = 'black';
-            ctx.fillText('Climate Change Simulation Results', 20, 30);
+/* ═══════════════════════════════════════════════════════════
+   SIMULATOR ENGINE
+═══════════════════════════════════════════════════════════ */
+function sv(id, val) { document.getElementById(id).textContent = val; }
 
-            charts.forEach((chart, index) => {
-                ctx.drawImage(chart.canvas, 0, index * 300 + 50);
-            });
+function applyScene(type, btn) {
+  document.querySelectorAll('.scene-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const cfg = {
+    bau: {yrs:80,em:15,re:25,df:75,cc:10,pg:1.5},
+    mod: {yrs:80,em:50,re:60,df:40,cc:35,pg:0.9},
+    nz:  {yrs:80,em:85,re:95,df:10,cc:70,pg:0.5},
+  }[type];
+  if(!cfg) return;
+  const set = (id,v,lbl,suf='') => {
+    document.getElementById(id).value = v;
+    document.getElementById(lbl).textContent = v+suf;
+  };
+  set('sl-yrs', cfg.yrs, 'lv-yrs');
+  set('sl-em',  cfg.em,  'lv-em',  '%');
+  set('sl-re',  cfg.re,  'lv-re',  '%');
+  set('sl-df',  cfg.df,  'lv-df',  '%');
+  set('sl-cc',  cfg.cc,  'lv-cc',  '%');
+  set('sl-pg',  cfg.pg,  'lv-pg',  '%/yr');
+}
 
-            const link = document.createElement('a');
-            link.download = 'climate_simulation_results.png';
-            link.href = canvas.toDataURL();
-            link.click();
-        }
+const TIPPING = [
+  {t:1.5,n:'Coral Reef Mass Die-off',d:'90% of coral reefs experience permanent bleaching',c:'#ff6b2b'},
+  {t:2.0,n:'Arctic Sea Ice Loss',d:'Ice-free Arctic summers become a permanent state',c:'#ff6b2b'},
+  {t:2.5,n:'Greenland Ice Destabilization',d:'Irreversible melting commits +7m of sea level rise',c:'#ff2d55'},
+  {t:3.0,n:'Amazon Rainforest Dieback',d:'Transition to savanna, releasing stored carbon',c:'#ff2d55'},
+  {t:3.5,n:'WAIS Collapse',d:'West Antarctic Ice Sheet collapse becomes inevitable',c:'#ff2d55'},
+  {t:4.0,n:'Permafrost Methane Release',d:'Catastrophic CH₄ from thawing Siberian permafrost',c:'#cc0033'},
+  {t:5.0,n:'Cascade Failure',d:'Multiple simultaneous tipping points crossed — runaway warming',c:'#880011'},
+];
 
-        // Add export button to the page
-        const exportButton = document.createElement('button');
-        exportButton.textContent = 'Export Results';
-        exportButton.className = 'btn btn-success mt-3';
-        exportButton.onclick = exportResults;
-        document.querySelector('.container-fluid').appendChild(exportButton);
+function simulate(yrs, em, re, df, cc, pg) {
+  const res = {years:[],temp:[],sea:[],bio:[],co2:[]};
+  let T=0, S=0, B=1.0, C=421.8;
 
-        // Add more advanced features
+  for(let i=0;i<yrs;i++) {
+    res.years.push(2024+i);
 
-        // 1. Tipping points
-        function checkTippingPoints(results) {
-            const tippingPoints = [];
-            const lastTemp = results.temperatures[results.temperatures.length - 1];
+    // Forcing factor
+    const F = (1-em)*(1-re*.75)*(1+df*.45)*(1-cc*.55)*(1+pg*10);
 
-            if (lastTemp > 2) {
-                tippingPoints.push('Arctic sea ice loss');
-            }
-            if (lastTemp > 3) {
-                tippingPoints.push('Amazon rainforest dieback');
-            }
-            if (lastTemp > 4) {
-                tippingPoints.push('West Antarctic ice sheet collapse');
-            }
+    // CO₂ dynamics
+    const co2rate = 2.5*F*(1+T*.012);
+    const sink = cc*1.8 + re*.4;
+    C += (co2rate - sink*.12)*(1+(Math.random()-.5)*.04);
+    C = Math.max(290, C);
+    res.co2.push(C);
 
-            return tippingPoints;
-        }
+    // Temperature with positive feedback loops
+    const dT = .034*F*(1+T*.045)*(1+(Math.random()-.5)*.04);
+    T = Math.max(0, T+dT);
+    res.temp.push(T);
 
-        // 2. Economic impact calculation
-        function calculateEconomicImpact(results) {
-            const lastTemp = results.temperatures[results.temperatures.length - 1];
-            const gdpLoss = lastTemp * 0.7; // Assuming 0.7% GDP loss per 1°C increase
-            return gdpLoss.toFixed(2);
-        }
+    // Non-linear sea level (ice melt acceleration above 2°C)
+    const iceBoost = T>2 ? (T-2)*.45 : 0;
+    const dS = (.32*(1+T*.28)+iceBoost)*(1-cc*.12)*(1+(Math.random()-.5)*.035);
+    S += dS;
+    res.sea.push(S);
 
-        // 3. Feedback loops
-        function applyFeedbackLoops(results) {
-            const feedbackFactor = 1.1; // 10% amplification due to feedback loops
-            return results.temperatures.map(temp => temp * feedbackFactor);
-        }
+    // Biodiversity cascade
+    const dB = .004*(1+T*.55+df*.75)*(1+pg*5);
+    B = Math.max(0, Math.min(1, B-dB));
+    res.bio.push(B);
+  }
+  return res;
+}
 
-        // Update the displayResults function to include these new features
-        function displayResults(results) {
-            const lastIndex = results.temperatures.length - 1;
-            const resultsDiv = document.getElementById('simulationResults');
-            const tippingPoints = checkTippingPoints(results);
-            const economicImpact = calculateEconomicImpact(results);
-            const adjustedTemps = applyFeedbackLoops(results);
+function runSim() {
+  const btn = document.getElementById('run-btn');
+  const txt = document.getElementById('run-txt');
+  btn.classList.add('running'); txt.textContent = 'COMPUTING...';
 
-            resultsDiv.innerHTML = `
-                    <p>Final year: ${results.years[lastIndex]}</p>
-                    <p>Temperature increase: ${results.temperatures[lastIndex].toFixed(2)}°C</p>
-                    <p>Adjusted temperature (with feedbacks): ${adjustedTemps[lastIndex].toFixed(2)}°C</p>
-                    <p>Sea level rise: ${results.seaLevels[lastIndex].toFixed(2)} cm</p>
-                    <p>Biodiversity index: ${results.biodiversity[lastIndex].toFixed(2)}</p>
-                    <p>Estimated GDP loss: ${economicImpact}%</p>
-                    <p>Tipping points reached: ${tippingPoints.length > 0 ? tippingPoints.join(', ') : 'None'}</p>
-                `;
-        }
+  setTimeout(() => {
+    const r = simulate(
+      parseInt(document.getElementById('sl-yrs').value),
+      parseFloat(document.getElementById('sl-em').value)/100,
+      parseFloat(document.getElementById('sl-re').value)/100,
+      parseFloat(document.getElementById('sl-df').value)/100,
+      parseFloat(document.getElementById('sl-cc').value)/100,
+      parseFloat(document.getElementById('sl-pg').value)/100
+    );
+    lastSim = r;
+    updateCharts(r);
+    updateResults(r);
+    updateMap(r);
+    updateTpTimeline(r);
+    btn.classList.remove('running'); txt.textContent = 'RUN SIMULATION';
+  }, 650);
+}
 
-        // Call runSimulation once on page load to show initial state
-        runSimulation();
-    </script>
+function updateCharts(r) {
+  const upd = (ch, labels, data) => {
+    ch.data.labels = labels;
+    ch.data.datasets[0].data = data;
+    ch.update('active');
+  };
+  upd(charts.temp, r.years, r.temp.map(v=>+v.toFixed(3)));
+  upd(charts.sea,  r.years, r.sea.map(v=>+v.toFixed(2)));
+  upd(charts.bio,  r.years, r.bio.map(v=>+v.toFixed(4)));
+  upd(charts.co2,  r.years, r.co2.map(v=>+v.toFixed(1)));
+}
+
+function updateResults(r) {
+  const li = r.temp.length-1;
+  const ft=r.temp[li], fs=r.sea[li], fb=r.bio[li];
+  const gdp = (ft*.7 + (1-fb)*5.5).toFixed(1);
+
+  document.getElementById('rv-temp').textContent = ft.toFixed(2)+'°C';
+  document.getElementById('rv-sea').textContent  = fs.toFixed(1);
+  document.getElementById('rv-bio').textContent  = fb.toFixed(3);
+  document.getElementById('rv-gdp').textContent  = gdp+'%';
+
+  const tv = document.getElementById('rv-temp');
+  tv.className = 'res-val '+(ft<1.5?'rv-grn':ft<2.5?'rv-hot':'rv-red');
+
+  document.getElementById('results-area').style.display='block';
+
+  // Inline tipping points
+  const reached = TIPPING.filter(tp=>ft>=tp.t);
+  const tpa = document.getElementById('tp-area');
+  const tpl = document.getElementById('tp-list');
+  if(reached.length) {
+    tpa.style.display='block';
+    tpl.innerHTML = reached.map(tp=>`
+      <div class="tp-inline reached">
+        <div class="tp-tmp" style="color:${tp.c}">${tp.t}°C</div>
+        <div>
+          <div class="tp-nm">⚠ ${tp.n}</div>
+          <div class="tp-ds">${tp.d}</div>
+        </div>
+      </div>`).join('');
+  } else {
+    tpa.style.display='none';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TIPPING POINTS SECTION
+═══════════════════════════════════════════════════════════ */
+function buildTippingSection() {
+  const axis = document.getElementById('tp-axis');
+  const cards = document.getElementById('tp-cards');
+
+  TIPPING.forEach((tp,i) => {
+    const pct = ((tp.t-1.5)/(5.0-1.5))*100;
+    const mk = document.createElement('div');
+    mk.className = 'tp-mk';
+    mk.style.left = pct+'%';
+    mk.innerHTML = `
+      <div class="tp-dot" id="tpdot-${i}" style="background:${tp.c};color:${tp.c}"></div>
+      <div class="tp-mlbl" style="color:${tp.c}">${tp.n.split(' ')[0]}</div>
+      <div class="tp-mtemp" style="color:${tp.c}">${tp.t}°C</div>`;
+    axis.appendChild(mk);
+  });
+
+  cards.innerHTML = TIPPING.map((tp,i)=>`
+    <div class="col-md-6 col-xl-4">
+      <div class="tp-big-card" id="tpcard-${i}">
+        <div class="tp-big-t" style="color:${tp.c}">${tp.t}°C</div>
+        <div>
+          <div class="tp-big-n">${tp.n}</div>
+          <div class="tp-big-d">${tp.d}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function updateTpTimeline(r) {
+  const ft = r.temp[r.temp.length-1];
+  const pct = Math.max(0, Math.min(100, ((ft-1.5)/(5.0-1.5))*100));
+  document.getElementById('tp-fill').style.width = pct+'%';
+  TIPPING.forEach((tp,i) => {
+    const dot  = document.getElementById('tpdot-'+i);
+    const card = document.getElementById('tpcard-'+i);
+    if(!dot||!card) return;
+    if(ft>=tp.t) { dot.classList.add('lit'); card.classList.add('lit'); }
+    else          { dot.classList.remove('lit'); card.classList.remove('lit'); }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LEAFLET MAP
+═══════════════════════════════════════════════════════════ */
+const HOTSPOTS = [
+  {lat:71,lon:25,n:'Arctic Ocean',r:'extreme',d:'Sea ice disappearance; methane from permafrost thaw'},
+  {lat:-3,lon:-60,n:'Amazon Basin',r:'extreme',d:'Deforestation-driven dieback and massive CO₂ release'},
+  {lat:40,lon:18,n:'Mediterranean',r:'high',d:'Severe drought, heatwaves and accelerating desertification'},
+  {lat:15,lon:44,n:'Arabian Peninsula',r:'extreme',d:'Lethal heat events surpassing wet-bulb limits'},
+  {lat:-16,lon:146,n:'Great Barrier Reef',r:'extreme',d:'Coral bleaching and ocean acidification collapse'},
+  {lat:20,lon:79,n:'Indian Subcontinent',r:'high',d:'Monsoon disruption and extreme seasonal heat stress'},
+  {lat:-15,lon:30,n:'Sub-Saharan Africa',r:'high',d:'Desertification and food security deterioration'},
+  {lat:60,lon:100,n:'Siberian Permafrost',r:'extreme',d:'Catastrophic methane from thawing permafrost'},
+  {lat:72,lon:-42,n:'Greenland',r:'extreme',d:'Ice sheet melting — commits metres of sea level rise'},
+  {lat:-79,lon:0,n:'Antarctica',r:'extreme',d:'WAIS instability and ice shelf collapse risk'},
+  {lat:8,lon:-14,n:'West Africa Coast',r:'high',d:'Coastal flooding and ocean fishery collapse'},
+  {lat:11,lon:106,n:'Mekong Delta',r:'high',d:'Saltwater intrusion flooding agricultural regions'},
+  {lat:8,lon:167,n:'Pacific Atolls',r:'extreme',d:'Existential sea level rise threatens habitation'},
+  {lat:-21,lon:-66,n:'Andes Glaciers',r:'high',d:'Glacial retreat threatening freshwater supply'},
+];
+
+function initMap() {
+  cMap = L.map('map',{ zoomControl:false, attributionControl:false }).setView([10,10],2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    subdomains:'abcd', maxZoom:19
+  }).addTo(cMap);
+  L.control.zoom({position:'bottomright'}).addTo(cMap);
+  L.control.attribution({prefix:'© CartoDB © OSM'}).addTo(cMap);
+  updateMap({temp:[1.2],sea:[21],bio:[0.96]});
+}
+
+function updateMap(r) {
+  if(!cMap) return;
+  mapLayers.forEach(l=>cMap.removeLayer(l)); mapLayers=[];
+  const ft = r.temp[r.temp.length-1];
+  const cols = {extreme:'#ff2d55',high:'#ff6b2b'};
+
+  HOTSPOTS.forEach(hs=>{
+    const c = cols[hs.r]||'#ffd700';
+    const rad = (hs.r==='extreme'?420000:290000)*(1+ft*.18);
+    const circle = L.circle([hs.lat,hs.lon],{
+      color:c, fillColor:c, fillOpacity:.15, weight:1.2, opacity:.75, radius:rad
+    }).bindPopup(`
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;max-width:210px;background:transparent">
+        <strong style="color:${c};display:block;margin-bottom:4px">${hs.n}</strong>
+        <span style="color:#b0c4d8;font-size:10px;line-height:1.6">${hs.d}</span>
+        <div style="margin-top:6px;color:${c};font-size:9px;text-transform:uppercase;letter-spacing:0.1em">RISK: ${hs.r}</div>
+      </div>`,
+      {className:'dark-popup'});
+    circle.addTo(cMap); mapLayers.push(circle);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPARISON BARS
+═══════════════════════════════════════════════════════════ */
+function animateBars() {
+  document.querySelectorAll('.bar-fill').forEach(b => {
+    setTimeout(()=>{ b.style.width = b.dataset.w+'%'; },80);
+  });
+  document.querySelectorAll('.bar-num').forEach(b => { b.textContent = b.dataset.val; });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════════════════════════════ */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.classList.add('revealed');
+      if(e.target.closest('#comparison')) animateBars();
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+
+/* ═══════════════════════════════════════════════════════════
+   GROQ AI ADVISOR
+═══════════════════════════════════════════════════════════ */
+function appendMsg(role, content) {
+  const c = document.getElementById('chat-msgs');
+  const isUser = role==='user';
+  const div = document.createElement('div');
+  div.className = 'msg'+(isUser?' user':'');
+  div.innerHTML = `
+    <div class="av ${isUser?'av-user':'av-ai'}"><i class="fas ${isUser?'fa-user':'fa-leaf'} fa-xs"></i></div>
+    <div class="bubble ${isUser?'bubble-user':'bubble-ai'}">${content}</div>`;
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
+  chatHistory.push({ role:isUser?'user':'assistant', content });
+}
+
+function showTyping() {
+  const c = document.getElementById('chat-msgs');
+  const div = document.createElement('div');
+  div.className = 'msg'; div.id = 'typing';
+  div.innerHTML = `
+    <div class="av av-ai"><i class="fas fa-leaf fa-xs"></i></div>
+    <div class="bubble bubble-ai"><div class="typing-dots"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>`;
+  c.appendChild(div); c.scrollTop = c.scrollHeight;
+}
+function removeTyping() { const t=document.getElementById('typing'); if(t) t.remove(); }
+
+async function callGroq(msg) {
+  const key = document.getElementById('groq-key').value.trim() || GROQ_DEFAULT;
+  showTyping();
+
+  let simCtx = '';
+  if(lastSim) {
+    const li = lastSim.temp.length-1;
+    simCtx = `\n[Active simulation: year ${lastSim.years[li]}, temp rise ${lastSim.temp[li].toFixed(2)}°C, sea level +${lastSim.sea[li].toFixed(1)}cm, biodiversity ${lastSim.bio[li].toFixed(2)}, CO₂ ${lastSim.co2[li].toFixed(0)}ppm]`;
+  }
+
+  const sys = `You are ClimaCore AI Advisor, an expert climate scientist powered by LLaMA 3.3 70B.
+You have deep knowledge of IPCC AR6, climate physics, tipping points, carbon budgets, and policy.${simCtx}
+Be concise (under 180 words), scientific, and actionable. Use specific numbers.`;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST',
+      headers:{ 'Authorization':`Bearer ${key}`, 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        max_tokens: 380,
+        temperature: 0.65,
+        messages:[
+          { role:'system', content:sys },
+          ...chatHistory.slice(-8),
+          { role:'user', content:msg }
+        ]
+      })
+    });
+    const d = await res.json();
+    removeTyping();
+    if(d.choices?.[0]) {
+      appendMsg('assistant', d.choices[0].message.content);
+    } else {
+      appendMsg('assistant', `⚠ API Error: ${d.error?.message||'Unknown error'}. Check your Groq API key.`);
+    }
+  } catch(e) {
+    removeTyping();
+    appendMsg('assistant', `⚠ Network error: ${e.message}`);
+  }
+}
+
+function sendMsg() {
+  const inp = document.getElementById('chat-inp');
+  const msg = inp.value.trim(); if(!msg) return;
+  inp.value = '';
+  appendMsg('user', msg);
+  callGroq(msg);
+}
+
+function quickQ(btn) {
+  document.getElementById('chat-inp').value = btn.textContent;
+  sendMsg();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  buildTippingSection();
+  initMap();
+  applyScene('mod');
+  setTimeout(runSim, 800);
+});
+</script>
 </body>
 </html>
